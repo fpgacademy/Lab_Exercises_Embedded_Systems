@@ -1,0 +1,141 @@
+\documentclass[epsfig,10pt,fullpage]{article}
+
+\newcommand{\LabNum}{1}
+\newcommand{\CommonDocsPath}{../../common/docs}
+\input{\CommonDocsPath/preamble.tex}
+
+\begin{document}
+
+\centerline{\huge Embedded Systems}
+~\\
+\centerline{\huge Laboratory Exercise \LabNum}
+~\\
+\centerline{\large Getting Started with Linux*}
+~\\
+
+\noindent
+This is an introductory exercise in using a Linux* operating system on Intel's Cyclone\textsuperscript{\textregistered} V SoC 
+devices. This discussion assumes that the reader is using the DE1-SoC development and 
+education board, but the lab instructions apply equally well if other boards are being used,
+such as the DE10-Standard or DE10-Nano. The DE-series boards are described on the 
+FPGAcademy.org website.  Linux runs on the ARM* processor that is part 
+of the Cyclone V SoC device. During the operating system boot process, Linux programs the 
+Cyclone V FPGA with the \textit{DE1-SoC Computer} system (or similar system for other
+boards). This system instantiates components inside the FPGA to make it easy to use the 
+peripherals built into the DE1-SoC board, such as the LEDs, seven-segment displays, switches, 
+and pushbuttons. For a detailed description of the computer system, please refer to 
+a document such as \textit{DE1-SoC Computer System with ARM}, available from FPGAcademy.org.
+
+\section*{Part I}
+\noindent
+Read and complete Sections 1, 2, and 3 of the tutorial \textit{Using Linux on DE-series Boards}.
+These sections will guide you through setting up the Linux microSD card, running the 
+Linux OS on the DE-series board, and communicating with the board from a host computer. 
+
+\section*{Part II}
+\noindent
+Section 3.3 of the \textit{Using Linux on DE-series Boards} tutorial involves implementing a
+program that increments the LEDR lights on the DE-series board. In this part you are to
+write another program that controls the LED lights in a different manner, described below.
+
+~\\
+\noindent
+Your program should turn on one LEDR light at a time. First, the rightmost light 
+{\it LEDR}$_0$ should be on, then {\it LEDR}$_1$, then {\it LEDR}$_2$, and so on. When you
+get to the leftmost light {\it LEDR}$_{9}$, the direction should be reversed. Only one 
+LEDR light is ever on at one time. The effect should be a single light sweeping from 
+right-to-left, then left-to-right, and so on.  
+Use a delay so that the light moves at some reasonable speed. To implement the delay, you
+can use a Linux system function, such as \texttt{nanosleep($\ldots$)}. Documentation for 
+the \texttt{nanosleep} function can be found by searching for it on the Internet.
+
+\section*{Part III}
+\noindent
+Section 3.4 of the tutorial \textit{Using Linux on DE-series Boards} shows how to implement a 
+device driver using interrupts for the KEY pushbuttons on the DE-series board. In this part you 
+are to extend the functionality of that device driver.
+
+~\\
+\noindent
+The existing KEY device driver initializes the LEDR port to $(\red{1}000000000)_2$, so that the 
+leftmost light is on, and then increments this value whenever a KEY is pressed. You are to 
+augment this code to display the count of pushbutton presses as a decimal digit, either on 
+the seven-segment display {\it HEX0} or on the Linux Terminal window. You only need to 
+display the decimal value corresponding to the four 
+least-significant bits of the count, and wrap around to 0 when it reaches 9. Always
+leave the leftmost LEDR light set to 1 as a visual indicator that the device driver 
+is present in the kernel. The count values displayed on the LEDR port should cycle through 
+$\red{1}000000000, \red{1}00000000\red{1}, \red{1}00000000\red{1}0,
+\red{1}00000000\red{11}, \ldots, \red{1}00000\red{1}00\red{1}, \red{1}000000000$, etc., and the 
+corresponding digits displayed should be $\red{0}, \red{1}, \red{2}, \red{3}, \ldots, \red{9},
+\red{0}$, 
+respectively. 
+
+~\\
+\noindent
+To display digits on the HEX0 seven-segment display, refer to the diagram given in 
+Figure~\ref{fig:hex}. It shows the {\it Data} registers in the parallel ports for displays
+HEX3$-$HEX0 and HEX5$-$HEX4. As shown in the figure, each segment in each display is
+connected to a specific data-register bit. 
+
+~\\
+\noindent
+If you are using the Linux Terminal window to display digits, then you may want to make 
+use of some of the Terminal
+window ASCII commands listed in Table 1. For example, the command \texttt{$\backslash$e[2J} clears 
+the Terminal window, and the command \texttt{$\backslash$e[H} moves the Terminal {\it cursor} 
+to the {\it home} position in the upper-left corner of the window.  In these 
+commands \texttt{$\backslash$e} represents the \texttt{Escape} character. It can alternatively 
+be specified by its ASCII code, for instance using the syntax \texttt{$\backslash$033}. You can send
+such commands to the Terminal window by using the \texttt{printk} function. For example,
+the Terminal window can be cleared by calling 
+
+\begin{lstlisting}
+printk (KERN_ERR "\e[2J");			// clear Terminal window
+\end{lstlisting}
+
+~\\
+\noindent More Terminal window commands can be found by searching on the Internet for
+\texttt{VT100 escape codes}.
+
+~\\
+\begin{figure}[H]
+   \begin{center}
+       \includegraphics{figures/fig_segment_port.pdf}
+   \end{center}
+   \caption{Diagram of the HEX display ports.}
+	\label{fig:hex}
+\end{figure}
+
+\begin{table}[h]
+\caption{Terminal window ASCII commands.}
+~\\
+\centering
+\label{vt100}
+\begin{tabular}{l|l}
+		  {\bf Command} & {\bf Result} \\ \hline
+		  \texttt{$\backslash$e[H} & move the cursor to the home position\\
+		  \texttt{$\backslash$e[?25l} & hide the cursor \\
+		  \texttt{$\backslash$e[?25h} & show the cursor \\
+		  \texttt{$\backslash$e[2J} & clear window \\
+		  \texttt{$\backslash$e[J} & clear window from cursor down \\ 
+		  \texttt{$\backslash$e[1J} & clear window from cursor up \\
+		  \texttt{$\backslash$e[ccm} & set foreground color to \texttt{cc}$^1$ \\
+		  \texttt{$\backslash$e[yy;xxH} & set cursor location to row \texttt{yy}, column \texttt{xx}
+		  
+\end{tabular}
+\end{table}
+
+~\\
+\noindent
+Note 1: \texttt{cc} values are 31 (red), 32 (green), 33 (yellow), 34 (blue), 35 (magenta), 36
+(cyan), and 37 (white)
+
+~\\
+\noindent
+
+\noindent
+\newpage
+\input{\CommonDocsPath/copyright.tex}
+
+\end{document}

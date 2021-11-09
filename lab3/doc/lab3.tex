@@ -1,0 +1,582 @@
+\documentclass[epsfig,10pt,fullpage]{article}
+
+\newcommand{\LabNum}{3}
+\newcommand{\CommonDocsPath}{../../common/docs}
+\input{\CommonDocsPath/preamble.tex}
+
+\begin{document}
+
+\centerline{\huge Embedded Systems}
+~\\
+\centerline{\huge Laboratory Exercise \LabNum}
+~\\
+\centerline{\large Character Device Drivers}
+~\\
+
+\section*{Part I}
+\noindent
+The purpose of this laboratory exercise is to teach you how to write and implement character 
+device drivers. {\it Character device drivers} are kernel modules that provide a file-based 
+interface to user-level programs. When a character device driver is inserted into the 
+Linux* kernel, a special type of file associated with the driver is created, usually in the 
+filesystem folder /{\it dev}. For example, if the driver is named {\it chardev} then the 
+associated file would be /{\it dev}/{\it chardev}. A user-level program can read or write to 
+this file to communicate with the driver. In this exercise we will develop a character
+device driver that can communicate with the user to print different text strings on the
+Terminal window. While this is not an especially interesting driver, it will serve to illustrate 
+how the code for a character device driver has to be structured. In later laboratory exercises we
+will use the knowledge developed here to write drivers that perform more useful functions,
+such as controlling hardware devices like switches, pushbuttons, LEDs, timers, video and
+audio output, and an accelerometer.
+
+~\\
+\noindent
+An example of code for a character device driver is given in Figure~\ref{fig:chardev}.
+This is a trivial example that is meant to illustrate how the code for a driver has to be
+structured. If a user reads from this driver, it simply replies with the text
+\texttt{Hello from chardev}. One way to read from the driver is to execute the Linux command
+\texttt{cat /dev/chardev}. This driver supports both reading and writing.
+The user can change the character string provided by the driver
+by writing to it. One way to write to the driver is to use the Linux command
+\texttt{echo "New message" > /dev/chardev}.
+
+~\\
+\noindent
+The driver is created by declaring a number of variables and data structures, and calling
+several functions that interact with the Linux kernel. Important lines of code in
+Figure~\ref{fig:chardev} are described below. Lines~\ref{line:inc1} to \ref{line:inc2} 
+include some header files that are required for character device drivers.
+Lines~\ref{line:dec1} to \ref{line:dec2} 
+provide prototype declarations for the functions \texttt{device\_open}, \texttt{device\_release},
+\texttt{device\_read}, and \texttt{device\_write}. These are the functions that will be 
+called by the Linux kernel when a user program performs an open, close, read, or write 
+operation, respectively, on the file /{\it dev}/{\it chardev}.
+
+~\\
+\noindent
+Lines~\ref{line:dec3} to \ref{line:dec4} declare some special types of variables. 
+All character device drivers must declare these variables, which are of type \texttt{dev\_t},
+\texttt{cdev}, and \texttt{class}. They are initialized in lines~\ref{line:s0} 
+to~\ref{line:s1}, in the function 
+\texttt{start\_chardev}, which calls a number of kernel functions. The first step to initialize
+these variables, shown in line~\ref{line:devnum}, is to obtain a {\it device number} by calling
+the kernel function \texttt{alloc\_chrdev\_region}. Then, the class structure is set up in
+line~\ref{line:code0} by calling \texttt{class\_create} and the \texttt{cdev} structure 
+is initialized in line~\ref{line:code1} by calling
+the \texttt{cdev\_alloc} function. Line~\ref{line:code2} initializes the \texttt{cdev}
+structure with a pointer to the \texttt{fops} structure, which specifies the names of the
+functions that open, close, read, and write to the character device driver. 
+Finally, lines~\ref{line:code3} and ~\ref{line:code4} add the \texttt{cdev} device and the
+class to the kernel. Line~\ref{line:code4a} initializes the \texttt{chardev\_msg} array with
+the default text message. The \texttt{start\_chardev} function is executed when the character
+device driver is inserted into the Linux kernel. When this driver is removed from the
+kernel, the function \texttt{stop\_chardev} is called, shown in lines~\ref{line:code5}
+to~\ref{line:code6}. Note that it is possible to print error or debug information on the 
+Linux terminal window, by calling the {\it printk} kernel function. This function
+works similarly to the C library function {\it printf}, and has the same types of formatting 
+options. Examples of {\it printk} are shown in Lines~\ref{line:s2} and~\ref{line:s3}.
+
+~\\
+\noindent
+Lines~\ref{line:code7} to~\ref{line:code8} give the code for \texttt{device\_open} and
+\texttt{device\_release}. For most character device drivers nothing needs to be done in these
+functions, and hence the code simply {\it returns}.
+
+\lstset{language=C,numbers=left,escapechar=|}
+\begin{figure}[H]
+\begin{center}
+\begin{minipage}[t]{15 cm}
+\begin{lstlisting}[name=chardev]
+|\label{line:inc1}|#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/fs.h>
+#include <linux/cdev.h>
+#include <linux/device.h>
+#include <asm/io.h>
+|\label{line:inc2}|#include <asm/uaccess.h>
+
+/* Kernel character device driver /dev/chardev. */
+|\label{line:dec1}|static int device_open (struct inode *, struct file *);
+static int device_release (struct inode *, struct file *);
+static ssize_t device_read (struct file *, char *, size_t, loff_t *);
+|\label{line:dec2}|static ssize_t device_write(struct file *, const char *, size_t, loff_t *);
+
+#define SUCCESS 0
+#define DEVICE_NAME "chardev"
+
+|\label{line:dec3}|static dev_t dev_no = 0;
+static struct cdev *chardev_cdev = NULL;
+|\label{line:dec4}|static struct class *chardev_class = NULL;
+#define MAX_SIZE 256	// assume that no message longer than this will be used
+|\label{line:code20}|static char chardev_msg[MAX_SIZE];	// the string that can be read or written
+
+|\label{line:fops}|static struct file_operations fops = {
+	.owner = THIS_MODULE,
+	.open = device_open,
+	.release = device_release,
+	.read = device_read,
+	.write = device_write
+};
+
+|\label{line:s0}|static int __init start_chardev(void)
+{
+	int err = 0;
+	/* Get a device number. Get one minor number (0) */
+	|\label{line:devnum}|if ((err = alloc_chrdev_region (&dev_no, 0, 1, DEVICE_NAME)) < 0) {
+		|\label{line:s2}|printk (KERN_ERR "chardev: alloc_chrdev_region() error %d\n", err);
+		return err;
+	}
+	|\label{line:code0}|chardev_class = class_create (THIS_MODULE, DEVICE_NAME);
+	
+	// Allocate and initialize the char device
+	|\label{line:code1}|chardev_cdev = cdev_alloc (); 
+	|\label{line:code2}|chardev_cdev->ops = &fops; 
+	chardev_cdev->owner = THIS_MODULE; 
+   
+	// Add the character device to the kernel
+	|\label{line:code3}|if ((err = cdev_add (chardev_cdev, dev_no, 1)) < 0) {
+		|\label{line:s3}|printk (KERN_ERR "chardev: cdev_add() error %d\n", err);
+		return err;
+	}
+	|\label{line:code4}|device_create (chardev_class, NULL, dev_no, NULL, DEVICE_NAME );
+	|\label{line:code4a}|strcpy (chardev_msg, "Hello from chardev\n"); 
+
+	return 0;
+|\label{line:s1}|}
+\end{lstlisting}
+\end{minipage}
+\caption{The character device driver code. (Part $a$)}
+\label{fig:chardev}
+\end{center}
+\end{figure}
+
+\lstset{language=C,numbers=left,escapechar=|,firstnumber=auto,name=chardev}
+\begin{center}
+\begin{minipage}[t]{15 cm}
+\begin{lstlisting}[name=chardev]
+|\label{line:code5}|static void __exit stop_chardev(void)
+{
+	device_destroy (chardev_class, dev_no);
+	cdev_del (chardev_cdev);
+	class_destroy (chardev_class);
+	unregister_chrdev_region (dev_no, 1);
+|\label{line:code6}|}
+
+|\label{line:code7}|/* Called when a process opens chardev */
+static int device_open(struct inode *inode, struct file *file)
+{
+	return SUCCESS;
+}
+
+/* Called when a process closes chardev */
+static int device_release(struct inode *inode, struct file *file)
+{
+	return 0;
+|\label{line:code8}|}
+
+|\label{line:code9}|/* Called when a process reads from chardev. Provides character data from 
+ * chardev_msg. Returns, and sets *offset to, the number of bytes read. */
+static ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_t *offset)
+{
+	size_t bytes;
+	|\label{line:code11}|bytes = strlen (chardev_msg) - (*offset);	// how many bytes not yet sent?
+	|\label{line:code12}|bytes = bytes > length ? length : bytes;	// too much to send at once?
+	
+	if (bytes)
+		|\label{line:code13}|(void) copy_to_user (buffer, &chardev_msg[*offset], bytes);
+	|\label{line:code14}|*offset = bytes;	// keep track of number of bytes sent to the user
+	|\label{line:code15}|return bytes;
+|\label{line:code10}|}
+
+|\label{line:code16}|/* Called when a process writes to chardev. Stores the data received into
+ * chardev_msg, and returns the number of bytes stored. */
+static ssize_t device_write(struct file *filp, const char *buffer, size_t length, loff_t *offset)
+{
+	size_t bytes;
+	bytes = length;
+
+	|\label{line:code18}|if (bytes > MAX_SIZE - 1)	// can copy all at once, or not?
+		bytes = MAX_SIZE - 1;
+	|\label{line:code19}|(void) copy_from_user (chardev_msg, buffer, bytes);
+	chardev_msg[bytes] = '\0';	// NULL terminate
+	// Note: we do NOT update *offset; we keep the last MAX_SIZE or fewer bytes
+	return bytes;
+|\label{line:code17}|}
+
+MODULE_LICENSE("GPL");
+module_init (start_chardev);
+module_exit (stop_chardev);
+\end{lstlisting}
+\end{minipage}
+\end{center}
+\begin{center}
+~\\
+Figure \ref{fig:chardev}. The character device driver code. (Part $b$)
+\end{center}
+
+~\\
+\noindent
+Lines~\ref{line:code9} to~\ref{line:code10} in Figure~\ref{fig:chardev}
+show the \texttt{device\_read} function. The
+first argument to this function, \texttt{filp}, is not used in this example. The second argument,
+\texttt{buffer}, is used to pass character data from the driver back to the 
+user-level process that read from /{\it dev}/{\it chardev}.
+The \texttt{length} argument specifies the maximum number of bytes that can be stored 
+in the \texttt{buffer}. The final argument, \texttt{offset}, will be discussed later. 
+Lines~\ref{line:code11} to~\ref{line:code12} determine how much data can be sent back to
+the kernel. If \texttt{length} is greater than \texttt{bytes} then the whole message can
+be sent at once. Otherwise only \texttt{length} characters can be sent. The value of
+\texttt{bytes} is calculated in Line~\ref{line:code11}. When a user opens the file
+/{\it dev}/{\it chardev}, and then reads from the file, \texttt{*offset} will be 0. Thus,
+\texttt{bytes} will be set to the length of the character string that is returned when the
+driver is read.
+
+~\\
+\noindent
+In Linux, the kernel does not directly access the memory addresses, or variables, in
+a user-level program. Similarly, user-level code cannot access memory addresses within
+the kernel. The kernel provides special functions for passing data between 
+itself and user-level programs. One such function, \texttt{copy\_to\_user},
+is called in Line~\ref{line:code13} of Figure~\ref{fig:chardev}. It copies character data
+from the kernel back to the user-level program via the \texttt{buffer}. The kernel variable
+\texttt{offset} is set to the value of the variable \texttt{bytes} in 
+line~\ref{line:code14}. This value of \texttt{offset},
+associated with /{\it dev}/{\it chardev}, is stored in the kernel as long as the file
+remains open. In line~\ref{line:code15} the \texttt{device\_read} function provides 
+as a return value the number of bytes stored into the \texttt{buffer}. A typical
+user-level program that reads from the device driver (e.g., \texttt{cat /dev/chardev})
+will read from the file until \texttt{device\_read} returns 0, which indicates {\it
+end-of-file}. The way this works in our example is as follows. The first time
+\texttt{device\_read} is called it copies the character string back to the
+\texttt{buffer} and returns the {\it string length}. But a second call to 
+\texttt{device\_read} will copy nothing into the \texttt{buffer} and will return 0. This
+mechanism is facilitated by the way in which \texttt{offset} is used in the code.
+
+~\\
+\noindent
+Lines~\ref{line:code16} to~\ref{line:code17} show the \texttt{device\_write} function. The
+first argument to this function, \texttt{filp}, is not used in this example. The second argument,
+\texttt{buffer}, is used to get character data from the user program into the device driver.
+The \texttt{length} argument specifies the amount of data that is to be transferred.
+The \texttt{offset} argument is not used in this example.
+Data transferred from the user is stored into \texttt{chardev\_msg}, overwriting the
+previous message.
+Line~\ref{line:code18} checks for overflow, so that the amount of data can be reduced if needed. 
+In line~\ref{line:code19} the kernel function \texttt{copy\_from\_user} is called to get
+the user-data and copy it into \texttt{chardev\_msg}. 
+
+~\\
+The \texttt{device\_write} function provides as a return value the number of bytes copied
+into \texttt{chardev\_msg}. A typical user-level program (e.g., \texttt{echo "New message" 
+> /dev/chardev}) will continue to call the \texttt{device\_write} function until a total 
+of \texttt{length} bytes have been received by the driver. In our example each call to 
+\texttt{device\_write} overwrites the data stored in \texttt{chardev\_msg}.
+
+~\\
+\noindent
+Perform the following:
+
+\begin{enumerate}
+\item Create a C source-code file named {\it chardev.c} for the device driver code in 
+Figure~\ref{fig:chardev}. The source code can be obtained alongside this lab exercise on 
+the FPGAcademy.org website. 
+\item Create a Makefile for your character device driver, following the format given in
+the tutorial {\it Using Linux on DE-series Boards}. Compile the code to create the kernel module 
+{\it chardev.ko}, and insert this module into the Linux kernel. 
+Check the filesystem folder /{\it dev} to see that the file /{\it dev}/{\it chardev} was
+created as a result of inserting your kernel module. Type the command \texttt{cat
+/dev/chardev} and observe that your character device driver responds with the message
+\texttt{Hello from chardev}. Overwrite the default message by typing a command such as
+\texttt{echo "New Message" > /dev/chardev}. Then, issue the \texttt{cat} command again to
+see that the driver responds with the new message.
+\item
+In addition to using commands like \texttt{cat} and \texttt{echo}, you can write your own
+user-level programs that read and write to your character device driver. An example program 
+is given in Figure~\ref{fig:part1}. It uses the kernel functions \texttt{open}, \texttt{read},
+\texttt{write}, and \texttt{close} to communicate with the character device driver through
+the file /{\it dev}/{\it chardev}. Create a C source-code file called {\it part1.c} for
+this program, and compile it using a command such as \texttt{gcc -Wall -o part1 part1.c}.
+You can obtain the source code alongside this exercise on the FPGAcademy.org 
+website. Run the resulting executable program and observe the output that it produces.
+\end{enumerate}
+
+\lstset{language=C,numbers=none}
+\begin{figure}[H]
+\begin{center}
+\begin{minipage}[t]{15 cm}
+\begin{lstlisting}[name=part1]
+#include <stdio.h>
+#include <signal.h>
+#include <string.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+#define BYTES 256	// max # of bytes to read from /dev/chardev
+
+volatile sig_atomic_t stop;
+void catchSIGINT(int signum){
+    stop = 1;
+}
+
+/* This code uses the character device driver /dev/chardev. The code reads the 
+ * default message from the driver and then prints it. After this the code 
+ * changes the message in a loop by writing to the driver, and prints each new
+ * message. The program exits if it receives a kill signal (for example, ^C 
+ * typed on stdin). */
+int main(int argc, char *argv[]){
+	int chardev_FD;              // file descriptor
+  	char chardev_buffer[BYTES];  // buffer for chardev character data
+	int ret_val, chars_read;     // number of characters read
+	char new_msg[128];           // space for the new message
+	int i_msg;
+    
+  	// catch SIGINT from ^C, instead of having it abruptly close this program
+  	signal(SIGINT, catchSIGINT);
+    
+	// Open the character device driver for read/write
+	if ((chardev_FD = open("/dev/chardev", O_RDWR)) == -1) {
+		printf("Error opening /dev/chardev: %s\n", strerror(errno));
+		return -1;
+	}
+
+	i_msg = 0;
+  	while (!stop) {
+		chars_read = 0;
+		while ((ret_val = read (chardev_FD, chardev_buffer, BYTES)) != 0)
+			chars_read += ret_val;	// read the driver until EOF
+		chardev_buffer[chars_read] = '\0';	// NULL terminate
+		printf ("%s", chardev_buffer);
+
+		sprintf (new_msg, "New message %d\n", i_msg);
+		i_msg++;
+		write (chardev_FD, new_msg, strlen(new_msg));
+
+		sleep (1);
+	}
+
+	close (chardev_FD);
+	return 0;
+}
+\end{lstlisting}
+\end{minipage}
+\caption{A program that communicates with /{\it dev}/{\it chardev}.}
+\label{fig:part1}
+\end{center}
+\end{figure}
+
+~\\
+\noindent
+An alternative version of the \texttt{read\_device} function is given in 
+Figure~\ref{fig:alternate}. Instead of calling the kernel function
+\texttt{copy\_to\_user}, this code copies one byte at a time by calling the kernel function
+\texttt{put\_user}. Similarly, an alternative version of the \texttt{device\_write}
+function that transfers one byte at a time instead of calling \texttt{copy\_from\_user}
+is shown in Figure~\ref{fig:alternate}.  These alternative versions of the code 
+are meant to provide additional examples of how device driver code can be written. The two
+versions of the code perform exactly the same functions.
+
+\lstset{language=C}
+\begin{figure}[H]
+\begin{center}
+\begin{minipage}[t]{15 cm}
+\begin{lstlisting}[name=alternate]
+/* Called when a process reads from chardev. */
+static ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_t *offset)
+{
+	size_t bytes_read = 0;
+	char *msg_Ptr = &(chardev_msg[*offset]);
+	
+	// Write to user buffer
+	while (length && *msg_Ptr)  {
+		put_user(*(msg_Ptr++), buffer++);
+		length--;
+		bytes_read++;
+	}
+	(*offset) = bytes_read;
+	return bytes_read;
+}
+
+/* Called when a process writes to chardev */
+static ssize_t device_write(struct file *filp, const char *buffer, size_t length, loff_t *offset)
+{
+	int i;
+	for (i = 0; i < length; ++i)
+		chardev_msg[i] = buffer[i];	// assume that data won't overflow
+	chardev_msg[i] = '\0'; 			// NULL terminate
+	return length;
+}
+\end{lstlisting}
+\end{minipage}
+\caption{Alternative versions of \texttt{device\_read} and \texttt{device\_write}}
+\label{fig:alternate}
+\end{center}
+\end{figure}
+
+\vspace{-1cm}
+\section*{Part II}
+\noindent
+The discussion below assumes that the reader is using the DE1-SoC board. If you are using
+the DE10-Standard board, then the same discussion applies. But if you are using the
+DE10-Nano board, then some minor differences should be considered, because this 
+board has fewer pushbutton KEYs and SW switches. 
+
+~\\
+\noindent
+In some Linux systems user-level programs are not permitted to access the physical memory 
+addresses of I/O devices. In such systems I/O devices can only be accessed via device
+drivers. In this part you are to implement two character device drivers. One driver provides the
+state of the KEY pushbutton switches in the DE1-SoC Computer, via the file 
+/{\it dev}/{\it KEY}. The other driver provides the state of the SW slider switches, via
+the file /{\it dev}/{\it SW}.
+
+~\\
+\noindent
+Perform the following:
+
+\begin{enumerate}
+\item Create a new kernel module in a file {\it KEY\_SW.c}. Write the code for {\it both}
+character device drivers in this module. Declare separate variables of type \texttt{dev\_t},
+\texttt{cdev}, and \texttt{class} for each driver. Initialize each of these variables by
+following the steps shown in Figure~\ref{fig:chardev}. When setting up the {\it fops} data
+structure (see line~\ref{line:fops} in Figure~\ref{fig:chardev}), each of your character
+device drivers needs to have a function for \texttt{opening}, \texttt{releasing}, and
+\texttt{reading} its /{\it dev}/ file. These drivers do not require a function for 
+\texttt{writing}, since a user would not need to write anything to /{\it dev}/{\it KEY} or
+/{\it dev}/{\it SW}.
+
+\noindent
+Your module needs to have an initialization function, like the one beginning on Line~\ref{line:s0}
+of Figure~\ref{fig:chardev}. If this function were named \texttt{init\_drivers}, then it 
+would be declared using the syntax
+
+\begin{lstlisting}
+static int _|$\,$|_init init_drivers(void)
+\end{lstlisting}
+
+\noindent Your code has to identify the module initialization function by using the statement
+\begin{lstlisting}
+module_init (init_drivers);
+\end{lstlisting}
+
+\noindent
+In {\it KEY\_SW.c} declare global variables that will hold virtual addresses for the KEY
+and SW ports in the DE1-SoC Computer. Initialize these variables in
+\texttt{init\_drivers}, using the kernel function \texttt{ioremap\_nocache}, as
+illustrated in the tutorial {\it Using Linux on DE-series Boards}. Note that you do not need to 
+use interrupts for this part of the exercise. 
+
+\noindent
+Write code for the \texttt{open}, \texttt{release}, and \texttt{read} functions for your drivers.
+For the KEY driver you should read the state of the KEYs from the port's {\it Edgecapture} register.
+The programmer registers in the KEY port of the DE1-SoC Computer are illustrated in
+Figure~\ref{fig:KEY}. Return the KEY values to the user as {\it character} data (ASCII) in 
+the \texttt{read} function for the KEY driver. One way to convert binary data into character 
+data is to make use of a library function such as \texttt{sprintf}. You could encode the
+binary data using ASCII in various schemes. For example, you could use one hexadecimal digit
+to encode the data, and then send the ASCII value of that digit. If the KEY data were equal 
+to \texttt{0011}, then you would return the character \texttt{3}, and if the data 
+were \texttt{1111} you would return \texttt{F}. Choose whatever method you prefer for 
+representing this data. For the SW driver, read the slider switch settings from the 
+port's {\it Data} register, illustrated in Figure~\ref{fig:SW}. Return these values to the 
+user in the form of {\it character} data, via the driver's \texttt{read} function. You can
+choose to encode the 10 data bits in different ways. For example, if you use hexadecimal
+and the data were \texttt{1100001010}, then you would return the ASCII characters
+\texttt{30A}.
+
+\begin{figure}[H]
+   \begin{center}
+       \includegraphics{figures/figureKEY.pdf}
+   \end{center}
+	\caption{The KEY pushbutton switch port.}
+\label{fig:KEY}
+\end{figure}
+
+\begin{figure}[H]
+   \begin{center}
+       \includegraphics{figures/fig_slider_port.pdf}
+   \end{center}
+	\caption{The SW slider switch port.}
+\label{fig:SW}
+\end{figure}
+
+\item Create a {\it Makefile} that can be used to compile your kernel module to produce the file 
+{\it KEY\_SW.ko}. Insert this module into the kernel and verify that it creates the
+character device files /{\it dev}/{\it KEY} and /{\it dev}/{\it SW}.
+
+\item Test your drivers by using the commands \texttt{cat /dev/KEY} and \texttt{cat /dev/SW}.
+Verify that the drivers provide correct values for the switches.
+\end{enumerate}
+
+\section*{Part III}
+\noindent
+This part of the exercise assumes that the reader is using the DE1-SoC board, to control
+its LEDs and seven-segment displays. The same discussion applies for the DE10-Standard board.
+But if the DE10-Nano board is being used instead, then two differences should be
+considered: it has fewer LED lights, and it has no seven-segment displays. The reader can still 
+perform the rest of the exercise, but should ignore any parts of the discussion that refer 
+to seven-segment displays. 
+
+~\\
+\noindent
+For this part you are to write another two character device drivers. One driver controls
+the LEDR lights in the DE1-SoC Computer, via the file /{\it dev}/{\it LEDR}. The
+other driver controls the seven-segment displays HEX5$-$HEX0, via the file /{\it dev}/{\it
+HEX}. The LEDR port in the DE1-SoC Computer is illustrated in Figure~\ref{fig:LEDR}, and the
+seven-segment display ports are depicted in Figure~\ref{fig:HEX}. Your driver should be 
+able to display decimal digits $\red{0}-\red{9}$ on each of the six displays.
+Perform the following:
+
+\begin{enumerate}
+\item Create a kernel module source-code file called {\it LEDR}\_{\it HEX.c}. Implement both
+character device drivers in this module. For both drivers you should implement functions for
+\texttt{open}, \texttt{release}, and \texttt{write} operations. These drivers do not require 
+a \texttt{read} function.
+\item Create a Makefile, compile your module, and insert it into the kernel.
+\item Test the LEDR and HEX character device drivers by using the \texttt{echo} Linux command.
+For example, if you designed your LEDR module to accept a three-digit hexadecimal value,
+then the command \texttt{echo 3FF > /dev/LEDR} would turn on all ten LEDs.
+\end{enumerate}
+
+\begin{figure}[H]
+   \begin{center}
+       \includegraphics{figures/fig_LED_port.pdf}
+   \end{center}
+	\caption{The LEDR red light port.}
+\label{fig:LEDR}
+
+\end{figure}
+\begin{figure}[H]
+   \begin{center}
+       \includegraphics{figures/fig_segment_port.pdf}
+   \end{center}
+	\caption{The seven-segment display ports.}
+\label{fig:HEX}
+\end{figure}
+
+\section*{Part IV}
+\noindent
+For this part you are to write a user-level program called {\it part4.c} that makes use of the 
+character device drivers from Parts II and III. As we mentioned in Part III, if you are
+using the DE10-Nano board, then ignore the parts of the solution that require
+seven-segment displays. Perform the following:
+
+\begin{enumerate}
+\item In your program open the files /{\it dev}/{\it KEY} and /{\it dev}/{\it SW} for reading, 
+and open the files /{\it dev}/{\it LEDR} and /{\it dev}/{\it HEX} for writing. Make a loop
+in your program that does the following. Whenever a KEY is pressed capture the values of
+the SW switches. Display these values on the LEDR lights. Also, keep a running
+accumulation of the SW values that have been read, and show this sum on the HEX displays,
+as a decimal value. 
+\item Compile your program using a command such as \texttt{gcc -Wall -o part4 part4.c}.
+\item Run your program and make sure that it works properly. Each time a KEY is
+pressed, the values of the SW switches should immediately appear on the LEDR lights and the
+sum should appear on the HEX displays. As an example, if the SW switches are set to 
+$0000000101$, then the first time a KEY is pressed \red{000005} should be shown on the HEX 
+displays, and the second time a KEY is pressed \red{000010} should be displayed.
+\end{enumerate}
+\vskip 0.8in
+\newpage
+\input{\CommonDocsPath/copyright.tex}
+
+\end{document}

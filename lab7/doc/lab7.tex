@@ -1,0 +1,319 @@
+\documentclass[epsfig,10pt,fullpage]{article}
+
+\newcommand{\LabNum}{7}
+\newcommand{\CommonDocsPath}{../../common/docs}
+\input{\CommonDocsPath/preamble.tex}
+
+\begin{document}
+
+\centerline{\huge Embedded Systems}
+~\\
+\centerline{\huge Laboratory Exercise \LabNum}
+~\\
+\centerline{\large Using the ADXL345 Accelerometer}
+~\\
+
+\noindent
+The purpose of this exercise is to experiment with the ADXL345 accelerometer chip that is
+included on a number of DE-series board. In this writeup we will assume that you are using 
+the DE1-SoC board, but the same instructions apply to other DE-series board, such as the DE10-Nano
+and DE10-Standard. You will write programs that interact with the ADXL345 device under 
+the Linux* operating system, running on the ARM* processor in the DE1-SoC Computer. Also, 
+you will add support in the Linux kernel for the ADXL345 chip by creating a character device
+driver.
+
+\noindent
+\section*{Part I}
+
+\noindent
+To learn about the operation of the ADXL345 accelerometer chip, read the tutorial called
+{\it Using the Accelerometer in DE-SoC Boards}. This tutorial is available on the 
+FPGAcademy.org website. An example program that demonstrates use of the accelerometer
+is included with the tutorial.  This program assumes that no operating system is
+being used (i.e., a ``bare metal'' environment), and therefore uses simple dereferencing of 
+pointers to communicate with the device. But, since your code needs to run under Linux on the
+DE1-SoC Computer, you will have to map the required physical addresses into virtual addresses
+by using Linux kernel functions like {\it mmap} and the {\it /dev/mem} interface.
+These concepts are discussed in detail in the tutorial {\it Using Linux on the DE1-SoC}.
+
+~\\
+\noindent
+Perform the following:
+
+\begin{enumerate}
+\item Read through the tutorial {\it Using the Accelerometer in DE-SoC Boards}. Create a new
+version of the C program that accompanies the tutorial, which uses virtual addresses and
+can run under Linux.
+\item In your program, configure the ADXL345 device to provide an output data rate of 12.5
+Hz, using a fixed 10-bit resolution and +/- 16 g range. These settings provide an appropriate
+level of sensitivity from the ADXL345 device, of about 31 mg per least-significant bit.
+\item Use a Linux Terminal to compile and run your program. Tilt the DE1-SoC board in various
+directions and observe the acceleration data that is printed by your program. Since the z axis
+of the accelerometer chip on the DE1-SoC board is aligned with earth's gravity, your program
+should read acceleration of approximately 1,000 mg in the z direction when the DE1-SoC board
+is stationary. You should end up with a program that prints out acceleration data in the format 
+\texttt{<X-axis acceleration in mg>, <Y-axis acceleration in mg>, <Z-axis acceleration in mg>}.
+\end{enumerate}
+
+\noindent
+\section*{Part II}
+
+\noindent
+In Part I you wrote a user-level program to directly read/write registers in the ADXL345
+device by using memory-mapped I/O. In this part, you will use a different approach, by
+adding support to the Linux kernel for accessing the device.
+You are to create a Linux character device driver, in the form of a kernel
+module, that provides a file-based I/O interface to accelerometer data. The driver must create
+the file {\it /dev/accel} in the Linux filesystem. A read of this file should return accelerometer
+data in the format \texttt{R XXXX YYYY ZZZZ SS}, where {\it R} is 1 if new accelerometer data
+is being provided, {\it XXXX}, {\it YYYY}, and {\it ZZZZ} are acceleration data in the 
+x, y, and z axes, and {\it SS} is the scale factor in mg/LSB for the acceleration data. As
+an example, if the ADXL345 has new data to report, then a read of the file might return:
+"1 0 -1 32 31", which would represent 0 mg acceleration in the x axis, -31 mg acceleration in
+the y axis, and 992 mg acceleration in the z axis. If you were to perform another read from {\it
+/dev/accel} immediately, then the device might not be ready to provide new data; it would
+then respond with "0 0 -1 32 31", indicating old data.
+
+~\\
+\noindent
+An outline of the required code for the accelerometer device driver is given in 
+Figure~\ref{fig:accel}. Lines \ref{line:includes} to~\ref{line:includes2} include header files
+that are needed for the driver. Global variables that are used to access the accelerometer,
+which will be described later, are declared in lines~\ref{line:dec1} and~\ref{line:dec2}.
+Line~\ref{line:vars} is a placeholder for the declarations of function prototypes and variables
+that are needed for the character device driver. Prototypes have to be declared for the functions
+that are executed when opening, reading, and closing the driver. Variables of type 
+\texttt{dev\_t}, \texttt{cdev}, and \texttt{class} have to be declared and initialized in
+the function {\it start\_accel}, shown in Lines~\ref{line:start1} to~\ref{line:start2},
+which is executed when the accelerometer driver is inserted into the Linux kernel. Refer to
+Exercise 3 for a more detailed discussion about the functions and variables that are needed for
+character device drivers.
+
+~\\
+\noindent
+To provide the kernel module with access to the {\it I2C controller}, which is used to
+communicate with the ADXL345 device, line~\ref{line:c1} calls the \texttt{ioremap\_nocache}
+function. Information about this function can be found in the tutorial {\it Using Linux on
+the DE1-SoC}. Line~\ref{line:c2} computes a virtual address for the {\it system manager}, 
+which has to be configured for use with the ADXL345 device. The next three lines call the
+\texttt{Pinmux\_Config}, \texttt{I2C0\_Init}, and \texttt{ADXL345\_Init} functions. You
+should be able to reuse the code that you wrote for these functions in Part I of this exercise.
+You should initialize the ADXL345 with the same settings as for Part I.
+
+~\\
+Line~\ref{line:ADXL345} is a placeholder for the various functions that are needed to read
+and write to registers in the ADXL345 device. You should be able to reuse the code from 
+Part I for these functions. The remainder of the code in Figure~\ref{fig:accel}
+refers to the functions that are needed to open, close, and read from the character device driver.
+A detailed discussion of these functions can be found in Laboratory Exercise 3.
+
+~\\
+\noindent
+Perform the following:
+
+\begin{enumerate}
+\item Create a file named {\it accel.c} and fill in the missing code from Figure~\ref{fig:accel}.
+Using a Makefile, compile your code to create the 
+kernel module {\it accel.ko} and insert this module into the Linux kernel. 
+\item Test your device driver by executing a command such as \texttt{cat /dev/accel} using a
+Linux Terminal window. Try tilting the board in various directions and confirm that the
+driver provides appropriate results each time that you read from {\it /dev/accel}.
+\item
+Once you have confirmed correct operation of your character device driver, write a user-level
+program called {\it part2.c} that uses the driver.
+A skeleton of an example program is given in Figure~\ref{fig:part2}. Fill in the rest 
+of the code so that it performs some operations using the device driver. For example, you could 
+write a loop that continuously reads from the device and prints the results whenever new
+data is available. Compile your program using a command such as \texttt{gcc -Wall -o part2
+part2.c}, and test the program.
+\end{enumerate}
+
+\noindent
+\section*{Part III}
+
+In Part II your character device driver supports only read operations. For this part, you
+are to add the following commands that can be written to your device driver:
+
+\begin{itemize}
+		  \item \texttt{device}: prints on the Terminal (using {\it printk}) the ADXL345 device ID.
+		  \item \texttt{init:} re-initializes the ADXL345
+		  \item \texttt{calibrate:} executes a calibration routine
+		  \item \texttt{format F G:} sets the data format to fixed 10-bit resolution $(F = 0)$, or
+					 full resolution $(F = 1)$, with range {\it G} = +/- $2, 4, 8,$ or 16 g
+		  \item \texttt{rate R:} sets the output data rate to $R$ Hz. Your code should support
+					 a few examples of data rates, such as 25 Hz, 12.5 Hz, and so on.
+\end{itemize}
+
+\noindent
+Perform the following:
+
+\begin{enumerate}
+\item Augment your device-driver code from Part II to support {\it write} operations, 
+and implement the commands listed above. 
+\newpage
+\lstset{language=C,numbers=left,escapechar=|}
+\begin{figure}[h]
+\begin{center}
+\begin{minipage}[t]{15 cm}
+\begin{lstlisting}[name=dots]
+|\label{line:includes}|#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/fs.h>
+#include <linux/cdev.h>
+#include <linux/device.h>
+#include <asm/io.h>
+|\label{line:includes2}|#include <asm/uaccess.h>
+
+// Declare global variables needed to use the accelerometer
+|\label{line:dec1}|volatile int * I2C0_ptr;	// virtual address for I2C communication
+|\label{line:dec2}|volatile int * SYSMGR_ptr;	// virtual address for System Manager communication
+
+// Declare other variables and prototypes needed for a character device driver
+|\label{line:vars}$\ldots$| code not shown
+
+/* Code to initialize the accelerometer driver */
+|\label{line:start1}|static int _|$\,$|_init start_accel(void)
+{
+	// initialize the dev_t, cdev, and class data structures
+	|$\ldots$| code not shown
+
+	// generate virtual addresses
+	|\label{line:c1}|I2C0_ptr = ioremap_nocache (0xFFC04000, 0x00000100);
+	|\label{line:c2}|SYSMGR_ptr = ioremap_nocache (0xFFD08000, 0x00000800);
+	if ((I2C0_ptr == 0) |$\mid\,\mid$| (SYSMGR_ptr == NULL))
+		printk (KERN_ERR "Error: ioremap_nocache returned NULL\n");
+
+	Pinmux_Config ();
+	I2C0_Init ();
+	ADXL345_Init ();
+	return 0;
+|\label{line:start2}|}
+
+// Functions needed to read/write registers in the ADXL345 device
+|\label{line:ADXL345}||$\ldots$| code not shown
+
+static void _|$\,$|_exit stop_accel(void)
+{
+	/* unmap the physical-to-virtual mappings */
+	iounmap (I2C0_ptr);
+	iounmap (SYSMGR_ptr);
+
+	/* Remove the device from the kernel */
+	|$\ldots$| code not shown
+}
+
+// Code for device_open and device_release
+|$\ldots$| code not shown
+
+static ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_t *offset)
+{
+	|$\ldots$| code not shown
+}
+\end{lstlisting}
+\end{minipage}
+\caption{An outline of the ADXL345 device driver code.}
+\label{fig:accel}
+\end{center}
+\end{figure}
+\clearpage
+\item Write a user-level program, called {\it part3.c}, that uses your character device driver.
+Implement a simple graphical demo that draws a ``bubble'' on the screen. When the DE1-SoC
+board is stationary the bubble should appear in the middle of the screen. Tilting the
+board right, left, up, or down should cause the bubble to ``move'' accordingly.
+Also, print in the top-left of the screen the values of x, y, and z acceleration each time
+new data is available from your device driver.
+\item To implement graphics, you can use either ASCII commands in a Terminal window, or you can
+connect a VGA monitor to the DE1-SoC board and use VGA graphics.  ASCII graphics were
+described in Lab Exercise 5, and VGA graphics were discussed in Lab Exercise 6.
+\item Experiment by writing different commands to {\it /dev/accel} and examining the effect
+on your graphics display. Depending on the data format that you set in the accelerometer,
+the graphics displayed by your program may appear ``jittery''. To ameliorate this effect,
+you can compute a running average of the acceleration data. For example, to compute an
+average acceleration for the x-axis, an appropriate calculation could be
+\lstset{language=C,numbers=none}
+\begin{lstlisting}
+av_x = av_x * |$\alpha$| + accel_x * |$(1 - \alpha)$|
+\end{lstlisting}
+Here, {\it av\_x} is the average acceleration, and {\it accel\_x} is the most recent
+x-axis data provided by the ADXL345. Smaller/larger values of $\alpha$ can be used to
+decrease/increase the effect of new data on the average.
+\end{enumerate}
+
+~\\
+\lstset{language=C,numbers=none,escapechar=|}
+\begin{figure}[h]
+\begin{center}
+\begin{minipage}[t]{13.5 cm}
+\begin{lstlisting}[name=part1]
+#include <stdio.h>
+#include <string.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+// number of characters to read from /dev/accel
+#define accel_BYTES 20
+
+int main(int argc, char *argv[])
+{
+	int accel_FD;						// file descriptor
+	char accel_buffer[accel_BYTES];		// buffer for accel char data
+	// Declare other variables
+	|$\ldots$| code not shown 
+    
+	// Open the character device driver
+  	if ((accel_FD = open("/dev/accel", O_RDWR)) == -1)
+	{
+		printf("Error opening /dev/accel: %s\n", strerror(errno));
+		return -1;
+	}
+	
+	// Perform some operations using the ADXL345 device
+	|$\ldots$| code not shown
+
+	close (accel_FD);
+	return 0;
+}
+\end{lstlisting}
+\end{minipage}
+\caption{A program that communicates with /{\it dev}/{\it accel}.}
+\label{fig:part2}
+\end{center}
+\end{figure}
+\newpage
+\noindent
+\section*{Part IV}
+
+\noindent
+In addition to providing acceleration data, the ADXL345 device also supports ``tap'' and
+``double-tap'' detection. Perform the following:
+
+\begin{enumerate}
+\item Add tap and double-tap detection to your device-driver code from Part III. To learn
+how to configure the accelerometer for tap detection, consult the product {\it Data Sheet},
+which is available on Analog Device's website ({\it www.analog.com}). Some recommended 
+tap-detection settings are
+
+\begin{tabular}{ l l }
+	\\Tap threshold:& ~~~~~~~~3 g \\
+	Maximum tap duration:& ~~~~~~~~0.02 seconds\\
+	Tap latency:& ~~~~~~~~0.02 seconds \\
+	Double-tap window:& ~~~~~~~~0.3 seconds\\
+\end{tabular}
+
+\item Modify the read function for your character device driver so that it returns data in
+the format \texttt{HH XXXX YYYY ZZZZ SS}. Here, {\it HH} is a two-digit hexadecimal value
+corresponding to the contents of the ADXL345 {\it Sources of Interrupt} register. In addition to
+reporting when new acceleration data is available this register also indicates when tap
+or double-tap actions have been detected.
+\item Write a user-level program, called {\it part4.c}, that demonstrates the detection of 
+tap and double-tap actions. One possibility is to augment the user-level program from Part III
+such that the animation displayed changes based on whether a tap or double-tap has occurred.
+\end{enumerate}
+
+\vskip 0.8in
+\noindent
+\newpage
+\input{\CommonDocsPath/copyright.tex}
+
+\end{document}
