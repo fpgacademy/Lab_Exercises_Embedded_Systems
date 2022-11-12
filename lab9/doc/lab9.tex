@@ -299,11 +299,11 @@ at 3.3 V, the waveform spans roughly $2 \over 3$ of the 5~V vertical range.
 timer_t interval_timer_id;
 
 |\label{line:f1}|// Handler function that is called when a timeout occurs
-void timeout_handler(int signo)
-{
+void timeout_handler(int signo) {
 	|$\ldots$| code not shown 
 |\label{line:f2}|}
-int main(void){
+int main(void)
+{
 	|$\ldots$| 
 	|\label{line:sig1}|// Set up the signal handling
 	struct sigaction act;

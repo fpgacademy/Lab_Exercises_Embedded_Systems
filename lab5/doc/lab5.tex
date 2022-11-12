@@ -34,7 +34,7 @@ given in Figure~\ref{fig:dots}.
 \begin{center}
 \begin{minipage}[t]{12.5 cm}
 \begin{lstlisting}[name=dots]
-|\label{line:includes}|/* This program draws a few characters on the screen. */
+|\label{line:includes}|/* This program draws a few characters on the screen */
 #include <stdio.h>
 #define YELLOW 33
 #define CYAN 36
@@ -42,29 +42,29 @@ given in Figure~\ref{fig:dots}.
 
 void plot_pixel(int, int, char, char);
 
-int main(void) {
-	char c;
-	int i;
-	|\label{line:clear}|printf ("\e[2J"); 				// clear the screen
-  	|\label{line:hide}|printf ("\e[?25l");				// hide the cursor
+int main(void)
+{
+    char c;
+    int i;
+    |\label{line:clear}|printf ("\e[2J");            // clear the screen
+    |\label{line:hide}|printf ("\e[?25l");          // hide the cursor
 
-	|\label{line:plot1}|plot_pixel (1, 1, CYAN, 'X');
-	plot_pixel (80, 24, CYAN, 'X');
-	for (i = 8; i < 18; ++i)
-	   |\label{line:plot2}|plot_pixel (40, i + 12, YELLOW, '*');
+    |\label{line:plot1}|plot_pixel (1, 1, CYAN, 'X');
+    plot_pixel (80, 24, CYAN, 'X');
+    for (i = 8; i < 18; ++i)
+        |\label{line:plot2}|plot_pixel (40, i + 12, YELLOW, '*');
 
-	|\label{line:getchar}|c = getchar ();					// wait for user to press return
-	printf ("\e[2J"); 				// clear the screen
-	|\label{line:reset}|printf ("\e[%2dm", WHITE);		// reset foreground color
-	|\label{line:cursor}|printf ("\e[%d;%dH", 1, 1);	// move cursor to upper left
-	|\label{line:show}|printf ("\e[?25h");				// show the cursor
-	|\label{line:fflush}|fflush (stdout);
+    |\label{line:getchar}|c = getchar ();              // wait for user to press return
+    printf ("\e[2J");            // clear the screen
+    |\label{line:reset}|printf ("\e[%2dm", WHITE);   // reset foreground color
+    |\label{line:cursor}|printf ("\e[%d;%dH", 1, 1);  // move cursor to upper left
+    |\label{line:show}|printf ("\e[?25h");          // show the cursor
+    |\label{line:fflush}|fflush (stdout);
 }
 
-|\label{line:pp1}|void plot_pixel(int x, int y, char color, char c)
-{
-  	|\label{line:pixel}|printf ("\e[%2dm\e[%d;%dH%c", color, y, x, c);
-  	fflush (stdout);
+|\label{line:pp1}|void plot_pixel(int x, int y, char color, char c) {
+      |\label{line:pixel}|printf ("\e[%2dm\e[%d;%dH%c", color, y, x, c);
+      fflush (stdout);
 |\label{line:pp2}|}
 \end{lstlisting}
 \end{minipage}
@@ -91,7 +91,7 @@ coordinates ($1, 1$) and ($80, 24$), and a vertical yellow line of ten \texttt{*
 down the middle of the screen.
 
 ~\\
-\noindent The \texttt{plot\_pixel} function, shown in lines~\ref{line:pp1} to~\ref{line:pp2} uses 
+\noindent The \texttt{plot\_pixel} function, shown in lines~\ref{line:pp1} to~\ref{line:pp2}, uses 
 two commands to draw a character. The first command is \texttt{[ccm}, where $cc$ is
 called an {\it attribute}. The attribute can be used to set the color of text characters,
 by using different values of $cc$. Examples of color attributes are $cc = 31$ (red), 
@@ -145,10 +145,10 @@ fall closest to the line's ideal location on the screen.
 
 \begin{figure}[h]
    \begin{center}
-			  \includegraphics[width=6cm]{figures/fig_line_drawing_vt100}
+              \includegraphics[width=6cm]{figures/fig_line_drawing_vt100}
    \end{center}
    \caption{Drawing a line between coordinates $(1,1)$ and $(12,5)$.}
-	\label{fig:line_drawing}
+    \label{fig:line_drawing}
 \end{figure}
 
 ~\\
@@ -172,6 +172,7 @@ column $x = 3$ we perform the calculation $y = 1 + \frac{4}{11} \times (3-1) = 1
 \frac{8}{11}$, and round the result to $y = 2$.  Similarly, we perform such computations 
 for each column between $x_1$ and $x_2$.
 
+~\\
 \noindent
 The approach of moving along the $x$ axis has drawbacks when a line is steep. A steep line
 spans more rows than it does columns, and hence has a slope with absolute value greater than~1.
@@ -199,26 +200,26 @@ Figure~\ref{fig:bresenham} uses only integers to perform all calculations.
 \begin{lstlisting}[name=bresenham]
 draw_line(x0, x1, y0, y1)
 
-	is_steep = (abs(y1 - y0) > abs(x1 - x0))
-	if is_steep then
-		swap(x0, y0)
-		swap(x1, y1)
-	if x0 > x1 then
-		swap(x0, x1)
-		swap(y0, y1)
+    is_steep = (abs(y1 - y0) > abs(x1 - x0))
+    if is_steep then
+        swap(x0, y0)
+        swap(x1, y1)
+    if x0 > x1 then
+        swap(x0, x1)
+        swap(y0, y1)
 
-	deltax = x1 - x0
-	deltay = abs(y1 - y0)
-	error = -(deltax / 2)
-	y = y0
-	|\label{line:adjust}|if y0 < y1 then y_step = 1 else y_step = -1
+    deltax = x1 - x0
+    deltay = abs(y1 - y0)
+    error = -(deltax / 2)
+    y = y0
+    |\label{line:adjust}|if y0 < y1 then y_step = 1 else y_step = -1
 
-	|\label{line:f1}|for x from x0 to x1
-		if is_steep then draw_pixel(y,x) else draw_pixel(x,y)
-		error = error + deltay
-		if error |$\ge$| 0 then
-			y = y + y_step
-			|\label{line:f2}|error = error - deltax
+    |\label{line:f1}|for x from x0 to x1
+        if is_steep then draw_pixel(y,x) else draw_pixel(x,y)
+        error = error + deltay
+        if error |$\ge$| 0 then
+            y = y + y_step
+            |\label{line:f2}|error = error - deltax
 \end{lstlisting}
 \end{minipage}
 \caption{Pseudo-code for a line-drawing algorithm.}
@@ -242,13 +243,12 @@ you can use any ASCII character to draw your lines.
 
 \begin{figure}[h]
    \begin{center}
-			  \includegraphics[width=12cm]{figures/lines}
+       \includegraphics[width=12cm]{figures/lines}
    \end{center}
    \caption{Drawing a few lines on the screen.}
-	\label{fig:lines}
+    \label{fig:lines}
 \end{figure}
 
-\newpage
 \noindent
 \section*{Part III}
 
@@ -308,7 +308,7 @@ at a time on the Terminal screen.
        \includegraphics[scale = 0.5]{figures/fig_animation_example.pdf}
    \end{center}
    \caption{Two instants of the animation.}
-	\label{fig:animation_example}
+    \label{fig:animation_example}
 \end{figure}
 
 ~\\
@@ -349,46 +349,44 @@ connection may provide better results in comparison to a serial-port connection.
 \begin{lstlisting}[name=main]
 |$\ldots$| include files (not shown)
 
-volatile sig_atomic_t stop; 	// used to exit the program cleanly
+volatile sig_atomic_t stop;     // used to exit the program cleanly
 void catchSIGINT(int);
-struct timespec animation_time;	// used to control the animation timing
+struct timespec animation_time; // used to control the animation timing
 
 |$\ldots$| declare function prototypes and variables (not shown)
 
 /*******************************************************************************
- * This program draws Xs and lines on the screen, in an animated fashion.
+ * This program draws Xs and lines on the screen, in an animated fashion
  ******************************************************************************/
 int main(void)
 {
-	|$\ldots$| declare variables (not shown)
+    |$\ldots$| declare variables (not shown)
 
-  	// catch SIGINT from ^C, instead of having it abruptly close this program
-  	signal(SIGINT, catchSIGINT);
+    // catch SIGINT from ^C, instead of having it abruptly close this program
+    signal(SIGINT, catchSIGINT);
 
-  	// set random initial position, "delta", and color for all Xs
-	|$\ldots$| code not shown
+    // set random initial position, "delta", and color for all Xs
+    |$\ldots$| code not shown
 
-  	printf ("\033[?25l");            						// hide the cursor
-  	fflush (stdout);
+    printf ("\033[?25l");                             // hide the cursor
+    fflush (stdout);
 
-  	// initialize the animation speed
-  	animation_time.tv_sec = 0;
-  	animation_time.tv_nsec = 200000000;						// 0.2 seconds
-  	while (!stop)
-  	{
-		draw ( );													// draw the animation
-		nanosleep (&animation_time, NULL);					// wait for timer
-	}
-  	printf ("\033[2J"); 											// clear the screen
-  	printf ("\e[%2dm\e[%d;%dH", WHITE, min_x, min_y);	// reset color and cursor
-  	printf ("\e[?25h");             							// show the cursor
-  	return 0;
+    // initialize the animation speed
+    animation_time.tv_sec = 0;
+    animation_time.tv_nsec = 200000000;               // 0.2 seconds
+    while (!stop) {
+        draw ( );                                     // draw the animation
+        nanosleep (&animation_time, NULL);            // wait for timer
+    }
+    printf ("\033[2J");                               // clear the screen
+    printf ("\e[%2dm\e[%d;%dH", WHITE, min_x, min_y); // reset color and cursor
+    printf ("\e[?25h");                               // show the cursor
+    return 0;
 }
 
 /* Function to allow clean exit of the program */
-void catchSIGINT(int signum)
-{
-  	stop = 1;
+void catchSIGINT(int signum) {
+      stop = 1;
 }
 \end{lstlisting}
 \end{minipage}
@@ -418,15 +416,14 @@ Perform the following:
 
 \begin{enumerate}
 
-\item Implement the speed control discussed above for the animation. If you are using the 
-DE1-SoC or DE10-Standard boards, then implement the actions shown in Table~\ref{tab:action1}.
-For the DE10-Nano board, use the actions given in Table~\ref{tab:action2}, because this board
-has fewer switches. 
+\item Implement the speed control discussed above for the animation, as indicated 
+in Table~\ref{tab:action1}.
 
 When any of the switches {\it SW} is set to the ``on'' position the lines between objects should 
 not be drawn; only when all {\it SW} switches are set to the ``off'' position should the 
 lines appear. You can read the KEY and SW switches using either memory-mapped I/O, or 
-by reading from their character device drivers.
+by reading from their character device drivers. Reading from KEY and SW switches using
+device drivers is discussed in Part 2 of Lab Exercise 3.
 
 \item Compile your code and test the new features for changing the animation.
 
@@ -465,16 +462,16 @@ by reading from their character device drivers.
 \centering
 \label{tab:vt100}
 \begin{tabular}{l|l}
-		  {\bf Command} & {\bf Result} \\ \hline
-		  \rule{0cm}{12pt}\texttt{$\backslash$e7} & save cursor position and attributes\\
-		  \texttt{$\backslash$e8} & restore cursor position and attributes\\
-		  \texttt{$\backslash$e[H} & move the cursor to the home position\\
-		  \texttt{$\backslash$e[?25l} & hide the cursor \\
-		  \texttt{$\backslash$e[?25h} & show the cursor \\
-		  \texttt{$\backslash$e[2J} & clear window \\
-		  \texttt{$\backslash$e[ccm} & set foreground color to \texttt{cc}$^1$ \\
-		  \texttt{$\backslash$e[yy;xxH} & set cursor location to row \texttt{yy}, column \texttt{xx}
-		  
+          {\bf Command} & {\bf Result} \\ \hline
+          \rule{0cm}{12pt}\texttt{$\backslash$e7} & save cursor position and attributes\\
+          \texttt{$\backslash$e8} & restore cursor position and attributes\\
+          \texttt{$\backslash$e[H} & move the cursor to the home position\\
+          \texttt{$\backslash$e[?25l} & hide the cursor \\
+          \texttt{$\backslash$e[?25h} & show the cursor \\
+          \texttt{$\backslash$e[2J} & clear window \\
+          \texttt{$\backslash$e[ccm} & set foreground color to \texttt{cc} \\
+          \texttt{$\backslash$e[yy;xxH} & set cursor location to row \texttt{yy}, column \texttt{xx}
+          
 \end{tabular}
 \end{table}
 ~\\

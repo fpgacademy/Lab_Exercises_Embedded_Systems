@@ -31,9 +31,6 @@ Several DE-series boards provide audio input/output capability via an audio CODE
 chip. In the discussion below we assume that the reader is using the DE1-SoC board. If 
 a different board, such as the DE10-Standard or DE10-Nano, is being used the same instructions 
 can usually be followed, with some modifications.
-
-~\\
-\noindent
 The DE1-SoC Computer includes an audio port that is connected to the audio CODEC chip. 
 Audio output capability is provided via the line-out jack (3.5 mm green connector), and 
 audio input via the microphone jack (pink connector).
@@ -147,7 +144,7 @@ data, is provided along with this exercise.
 \noindent
 In Part I you wrote a program that is capable of playing a single tone at a time. Now you will
 write a program that is capable of playing multiple tones simultaneously (chords). Your program
-should accept a single command-line input string of 13 '1's and '0's, 
+should accept a single command-line input string of 13 `1's and `0's, 
 which turn on and off the 13 tones
 of the chromatic scale. For example, running your program with \texttt{./part2 1000100100000}
 should play the notes C (261.63~Hz), E, and G. Your program should play the selected tones
@@ -158,7 +155,7 @@ simultaneously for one second, and then terminate.
 To output multiple tones simultaneously, you will have to generate samples that are a sum of
 multiple sinusoids. When doing so, you must be careful of possible overflows; the sum of multiple
 sinusoid samples should not overflow a signed 32-bit value. One solution is to set 
-each tone's maximum volume to be the value \texttt{0x7FFFFFFF} volume divided by 13, which ensures 
+each tone's maximum volume to be the value \texttt{0x7FFFFFFF} divided by 13, which ensures 
 that the maximum possible value (when all 13 tones are being played) does not exceed the limit. 
 
 \lstset{language=C,numbers=left,escapechar=|}
@@ -171,14 +168,14 @@ that the maximum possible value (when all 13 tones are being played) does not ex
 #define 2PI 6.28318531
 #define SAMPLE_RATE 8000
 |$\ldots$|
-int main(void){
+int main(void)
+{
 	int nth_sample;
 	double freq = 261.626;
-	// Max volume, which is later multiplied by sin() (which ranges from -1 to 1)
-	int vol = 0x7FFFFFFF; 
+	int vol = 0x7FFFFFFF;   // max volume
 
 	// Write 8000 samples (one second's worth) of middle C (261.63~Hz)
-	for (nth_sample = 0; nth_sample < |$\ldots$|; nth_sample++){
+	for (nth_sample = 0; nth_sample < |$\ldots$|; nth_sample++) {
 		write_to_audio_port(vol * sin(nth_sample * <some math goes here>));
 	}
 }
@@ -197,7 +194,7 @@ Perform the following:
 \item Make a new folder to hold your C source code. Augment your code from Part I to create a
 new file {\it part2.c}, in which the main program accepts one 13-character {\it string} argument.
 Create an integer array such as \texttt{int tone\_volumes[13]} to store the volume for
-each tone, based the command-line argument of your program. Use a loop to create your
+each tone, based on the command-line argument of your program. Use a loop to create your
 sinusoidal waveform in which each sample is the sum of individual tones, for a duration of one
 second.
 \item Compile your program using a command such as \texttt{gcc -o part2 part2.c -lm}, 
@@ -245,7 +242,7 @@ your program's responsiveness to user inputs as your program must write to the a
 between reads of the keyboard. Likewise, since your program would have to interleave reads
 of the keyboard with writes to the audio port, the program may sometimes fail 
 to supply the port with a
-sample every 1/8000 seconds. Having two threads solves these issues by doing both tasks
+sample every 1/8000 seconds. Having two threads ameliorates these issues by doing both tasks
 simultaneously on the dual-core ARM* processor of the DE1-SoC computer.
 
 ~\\
@@ -261,7 +258,7 @@ USB port on the DE1-SoC board, and will be automatically recognized by the Linux
 Wireless keyboards can also be used, by plugging the transmitter/receiver for the keyboard
 into a USB port on the DE1-SoC board. If you are using the DE10-Nano board, then
 an adaptor is needed to connect the {\it USB type-A} connector of the keyboard to the 
-{\it micro-USB} port that is available on the DE10-Nano board. 
+{\it micro-USB} port that is available on the DE10-Nano board.
 
 ~\\
 \noindent
@@ -538,7 +535,8 @@ Rather than drawing waveforms continuously, just draw a few cycles whenever the 
 
 ~\\
 \noindent
-You can display waveforms using the VGA output of your DE-series board. At the sampling rate 
+You can display waveforms using the VGA output of your DE1-SoC board (or the VGA emulator).
+At the sampling rate 
 of 8000 samples/second, there are $8000 \div 261.626 \simeq 30.5$ samples per cycle for 
 tone C4. Given that there are 320 columns in the VGA display for the DE1-SoC Computer, it 
 is easy to display about $320 \div 30.5 \simeq 10.5$ cycles of this waveform. Using the same 
@@ -558,7 +556,7 @@ the code for drawing waveforms on the display. To communicate with the VGA contr
 in the DE1-SoC Computer you can use a character device driver. Such a driver can be found
 in {\it /home/root/Linux\_Libraries/drivers/video.ko}, and is described in the tutorial 
 {\it Using Linux on DE-series Boards}. If you are using the LCD display on the
-DE10-Standard board, then the {\it LCD.ko} driver can be used instead. 
+DE10-Standard board, then the {\it LCD.ko} driver can be used instead.
 
 Since there are now three threads in your program and only two CPU cores in the DE1-SoC
 Computer, the threads must share the processor cores. It is important to ensure that
@@ -625,10 +623,11 @@ Perform the following:
 
 \begin{enumerate}
 \item Augment your source code from Part IV to create a data structure that can be used to
-store recorded music. In this data structure you should record when each piano key is
+store recorded music. In this data structure you should save the time-point when each piano key is
 pressed, and when it is released. Both the recoding process and playback should be handled
 by the main thread in your program. To keep track of time you can use a timer, like the
-{\it stopwatch} that was discussed in Laboratory Exercise 4, Part 2. This {\it stopwatch}
+{\it stopwatch} that was discussed in Laboratory Exercise 4, Part II.  An executable file, 
+{\it stopwatch.ko}, is included with the design files for this exercise.  This {\it stopwatch}
 provides a character device driver via the file {\it /dev/stopwatch}, which provides the current
 time when read, and can be written to set the time. The {\it stopwatch} decrements at a
 rate of $1/100^{th}$ seconds, which is sufficiently accurate for our purposes.

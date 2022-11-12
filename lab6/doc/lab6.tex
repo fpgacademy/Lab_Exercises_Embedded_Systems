@@ -46,7 +46,7 @@ later in the exercise.
 \noindent
 The pixel buffer for the video-out port holds the data (color) for each pixel that is 
 displayed by the VGA controller.  As illustrated in Figure \ref{fig:video_coord}, the
-pixel buffer in the DE1-SoC Computer provides an image resolution of 320 $\times$ 240 pixels, 
+pixel buffer in the DE1-SoC Computer provides an image resolution of 320 $\times$ 240 pixels,
 with the coordinate (0,0) being at the top-left corner of the image.  Since the VGA 
 controller supports the resolution 640 $\times$ 480, each of the pixel values in the pixel 
 buffer is replicated in both the {\it x} and {\it y} dimensions when it is being displayed 
@@ -80,7 +80,8 @@ as those given in Figure~\ref{fig:pixels}. But if you are using the DE10-Nano Co
 then there are two major differences. First, each pixel color has eight bits, with three bits for
 the red and green components, and two bits for blue. Second, pixel addresses are 
 assigned as illustrated in Figure~\ref{fig:pixels}$b$, except that there is no longer a zero
-``padded'' on the right. Hence, using the default starting address of the pixel buffer, in the 
+``padded'' on the right. For the  DE10-Nano Computer, using the default starting address 
+of the pixel buffer, in the 
 FPGA on-chip memory, the pixel at coordinates $(0,0)$ has the address 
 {\sf 0xC8000000}, the pixel $(1,0)$ 
 has the address {\it base} $+$ (00000000~000000001)$_2$ = {\sf 0xC8000001}, the pixel $(0,1)$ 
@@ -200,8 +201,8 @@ that are needed for the driver. Global variables that are used to access the pix
 buffer, which will be described later, are declared in lines~\ref{line:dec1} to~\ref{line:dec2}.
 Line~\ref{line:vars} is a placeholder for the declarations of function prototypes and variables
 that are needed for the character device driver. Prototypes have to be declared for the functions
-that are executed when opening, reading, writing, and closing the driver. Variables of type 
-\texttt{dev\_t}, \texttt{cdev}, and \texttt{class} have to be declared and initialized in
+that are executed when opening, reading, writing, and closing the driver. A variables of type 
+\texttt{miscdevice} has to be declared and initialized in
 the function {\it start\_video}, shown in lines~\ref{line:start1} to~\ref{line:start2},
 which is executed when the video driver is inserted into the Linux kernel. Refer to Exercise 3 
 for a more detailed discussion about the functions and variables that are needed for character
@@ -231,13 +232,11 @@ pixel buffer to the color 0, which is {\it black}.
 \begin{center}
 \begin{minipage}[t]{15 cm}
 \begin{lstlisting}[name=dots]
-|\label{line:includes}|#include <linux/module.h>
-#include <linux/kernel.h>
-#include <linux/fs.h>
-#include <linux/cdev.h>
-#include <linux/device.h>
-#include <asm/io.h>
-#include <asm/uaccess.h>
+|\label{line:includes}|#include <linux/fs.h>               // struct file, struct file_operations
+#include <linux/module.h>           // for module init and exit macros
+#include <linux/miscdevice.h>       // for struct miscdev
+#include <linux/uaccess.h>          // for copy_to_user, see code
+#include <asm/io.h>                 // for mmap
 |\label{line:includes2}|#include "address_map_arm.h"
 
 // Declare global variables needed to use the pixel buffer
@@ -250,28 +249,27 @@ int pixel_buffer;				// used for virtual address of pixel buffer
 |\label{line:vars}$\ldots$| code not shown
 
 /* Code to initialize the video driver */
-|\label{line:start1}|static int _|$\,$|_init start_video(void)
-{
-   // initialize the dev_t, cdev, and class data structures
-   |$\ldots$| code not shown
+|\label{line:start1}|static int _|$\,$|_init start_video(void) {
+    // initialize the miscdevice data structures
+    |$\ldots$| code not shown
 
-   // generate a virtual address for the FPGA lightweight bridge
-   |\label{line:c1}|LW_virtual = ioremap_nocache (0xFF200000, 0x00005000);
-   if (LW_virtual == 0)
-      printk (KERN_ERR "Error: ioremap_nocache returned NULL\n");
+    // generate a virtual address for the FPGA lightweight bridge
+    |\label{line:c1}|LW_virtual = ioremap_nocache (0xFF200000, 0x00005000);
+    if (LW_virtual == 0)
+        printk (KERN_ERR "Error: ioremap_nocache returned NULL\n");
 
-   // Create virtual memory access to the pixel buffer controller
-   |\label{line:c2}|pixel_ctrl_ptr = (unsigned int *) (LW_virtual + 0x00003020);
-   get_screen_specs (pixel_ctrl_ptr); // determine X, Y screen size
+    // Create virtual memory access to the pixel buffer controller
+    |\label{line:c2}|pixel_ctrl_ptr = (unsigned int *) (LW_virtual + 0x00003020);
+    get_screen_specs (pixel_ctrl_ptr); // determine X, Y screen size
 
-   // Create virtual memory access to the pixel buffer
-   |\label{line:c3}|pixel_buffer = (int) ioremap_nocache (0xC8000000, 0x0003FFFF); 
-   if (pixel_buffer == 0)
-      printk (KERN_ERR "Error: ioremap_nocache returned NULL\n");
+    // Create virtual memory access to the pixel buffer
+    |\label{line:c3}|pixel_buffer = (int) ioremap_nocache (0xC8000000, 0x0003FFFF); 
+    if (pixel_buffer == 0)
+        printk (KERN_ERR "Error: ioremap_nocache returned NULL\n");
 
-   /* Erase the pixel buffer */
-   clear_screen ( );
-   return 0;
+    /* Erase the pixel buffer */
+    clear_screen ( );
+    return 0;
 |\label{line:start2}|}
 \end{lstlisting}
 \end{minipage}
@@ -285,43 +283,35 @@ int pixel_buffer;				// used for virtual address of pixel buffer
 \begin{center}
 \begin{minipage}[t]{12.5 cm}
 \begin{lstlisting}[name=dots]
-void get_screen_specs(volatile int * pixel_ctrl_ptr)
-{
-   |$\ldots$| code not shown
+void get_screen_specs(volatile int * pixel_ctrl_ptr) {
+    |$\ldots$| code not shown
 }
-void clear_screen( )
-{
-   |$\ldots$| code not shown
+void clear_screen( ) {
+    |$\ldots$| code not shown
 }
-void plot_pixel(int x, int y, short int color)
-{
-   |$\ldots$| code not shown
+void plot_pixel(int x, int y, short int color) {
+    |$\ldots$| code not shown
 }
-static void _|$\,$|_exit stop_video(void)
-{
-   /* unmap the physical-to-virtual mappings */
-   iounmap (LW_virtual);
-   iounmap ((void *) pixel_buffer);
+static void _|$\,$|_exit stop_video(void) {
+    /* unmap the physical-to-virtual mappings */
+    iounmap (LW_virtual);
+    iounmap ((void *) pixel_buffer);
 
-   /* Remove the device from the kernel */
-   |$\ldots$| code not shown
+    /* Remove the device from the kernel */
+    |$\ldots$| code not shown
 }
-static int device_open(struct inode *inode, struct file *file)
-{
-   return SUCCESS;
+static int device_open(struct inode *inode, struct file *file) {
+    return SUCCESS;
 }
-static int device_release(struct inode *inode, struct file *file)
-{
-   return 0;
+static int device_release(struct inode *inode, struct file *file) {
+    return 0;
 }
-static ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_t *offset)
-{
-   |$\ldots$| code not shown
+static ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_t *offset) {
+    |$\ldots$| code not shown
 }
 
-static ssize_t device_write(struct file *filp, const char *buffer, size_t length, loff_t *offset)
-{
-   |$\ldots$| code not shown
+static ssize_t device_write(struct file *filp, const char *buffer, size_t length, loff_t *offset) {
+    |$\ldots$| code not shown
 }
 
 MODULE_LICENSE("GPL");
@@ -376,26 +366,25 @@ Test your program by trying various operations.
 
 int screen_x, screen_y;
 
-int main(int argc, char *argv[]){
-
-	int video_FD;				// file descriptor
-	char buffer[video_BYTES];	// buffer for data read from /dev/video
-	char command[64];			// buffer for commands written to /dev/video
-	int x, y;
+int main(int argc, char *argv[])
+{
+    int video_FD;				// file descriptor
+    char buffer[video_BYTES];	// buffer for data read from /dev/video
+    char command[64];			// buffer for commands written to /dev/video
+    int x, y;
     
-	// Open the character device driver
-  	if ((video_FD = open("/dev/video", O_RDWR)) == -1)
-	{
-		printf("Error opening /dev/video: %s\n", strerror(errno));
-		return -1;
-	}
-	// Set screen_x and screen_y by reading from the driver
-	|$\ldots$| code not shown
-	// Use pixel commands to color some pixels on the screen
-	|$\ldots$| code not shown
+    // Open the character device driver
+    if ((video_FD = open("/dev/video", O_RDWR)) == -1) {
+        printf("Error opening /dev/video: %s\n", strerror(errno));
+        return -1;
+    }
+    // Set screen_x and screen_y by reading from the driver
+    |$\ldots$| code not shown
+    // Use pixel commands to color some pixels on the screen
+    |$\ldots$| code not shown
 
-	close (video_FD);
-	return 0;
+    close (video_FD);
+    return 0;
 }
 \end{lstlisting}
 \end{minipage}
@@ -455,22 +444,21 @@ this change, we can implement a line-drawing algorithm known as {\it Bresenham's
 A key property of this algorithm is that all variables are {\it integers}.
 Pseudo-code for this algorithm is given in Figure~\ref{fig:bresenham}. The first 15
 lines of the algorithm make the needed adjustments depending on whether or not the line is
-steep, and on its vertical (down or up) and horizontal (left or right) directions.
-Then, in lines 17 to 22 the algorithm increments the {\it x} variable 1 step at a time
+steep. Then, in lines 17 to 22 the algorithm increments the {\it x} variable 1 step at a time
 and computes the {\it y} value. The {\it y} value is incremented when needed to stay as
 close to the ideal location of the line as possible. Bresenham's algorithm calculates an
-{\it error} variable to decide whether or not to increment each {\it y} value.
+{\it error} variable to decide whether or not to increment each {\it y} value. 
 The {\it error} variable takes into account the relative difference
-between the width ({\it deltax}) and height of the line ({\it deltay}) in deciding
-how often {\it y} should be incremented. The version of the algorithm shown in 
-Figure~\ref{fig:bresenham} uses only integers to perform all calculations. 
+between the width of the line ({\it deltax}) and height of the line ({\it deltay}) in deciding
+how often {\it y} should be incremented.  The version
+of the algorithm shown in Figure~\ref{fig:bresenham} uses only integers to perform
+all calculations.
 
 \begin{figure}[h]
 \begin{center}
 \begin{minipage}[t]{12.5 cm}
-		  \begin{lstlisting}[language=C, morekeywords={then}, numbers=left,name=bresenham]
+\begin{lstlisting}[numbers=left,name=bresenham]
 draw_line(x0, x1, y0, y1)
-
 	is_steep = (abs(y1 - y0) > abs(x1 - x0))
 	if is_steep then
 		swap(x0, y0)
@@ -530,34 +518,33 @@ Figure~\ref{fig:part2}. Fill in the missing parts of this program. Compile and t
 
 int screen_x, screen_y;
 
-int main(int argc, char *argv[]){
-
-	int video_FD;						// file descriptor
-	char c, video_buffer[video_BYTES];	// buffer for video char data
-	char command[64];					// buffer for command data
+int main(int argc, char *argv[])
+{
+    int video_FD;                       // file descriptor
+    char c, video_buffer[video_BYTES];  // buffer for video char data
+    char command[64];                   // buffer for command data
     
-	// Open the character device driver
-	if ((video_FD = open("/dev/video", O_RDWR)) == -1)
-	{
-		printf("Error opening /dev/video: %s\n", strerror(errno));
-		return -1;
-	}
+    // Open the character device driver
+    if ((video_FD = open("/dev/video", O_RDWR)) == -1) {
+        printf("Error opening /dev/video: %s\n", strerror(errno));
+        return -1;
+    }
 	
-	// Read VGA screen size from the video driver
-	|$\ldots$| code not shown
+    // Read VGA screen size from the video driver
+    |$\ldots$| code not shown
 
-	/* Draw a few lines */
-	sprintf (command, "line %d,%d %d,%d %X\n", 0, screen_y - 1, screen_x - 1, 0, 0xFFE0);	// yellow
-	write (video_FD, command, strlen(command));
-	sprintf (command, "line %d,%d %d,%d %X\n", 0, screen_y - 1, 
-		(screen_x >> 1) - 1, 0, 0x07FF);	// cyan
-	write (video_FD, command, strlen(command));
-		(screen_x >> 2) - 1, 0, 0x07E0);	// green
-	write (video_FD, command, strlen(command));
-	|$\ldots$| etc.
+    /* Draw a few lines */
+    sprintf (command, "line %d,%d %d,%d %X\n", 0, screen_y - 1, screen_x - 1, 0, 0xFFE0);	// yellow
+    write (video_FD, command, strlen(command));
+    sprintf (command, "line %d,%d %d,%d %X\n", 0, screen_y - 1, 
+        (screen_x >> 1) - 1, 0, 0x07FF);	// cyan
+    write (video_FD, command, strlen(command));
+        (screen_x >> 2) - 1, 0, 0x07E0);	// green
+    write (video_FD, command, strlen(command));
+    |$\ldots$| etc.
 
-	close (video_FD);
-	return 0;
+    close (video_FD);
+    return 0;
 }
 \end{lstlisting}
 \end{minipage}
@@ -729,37 +716,35 @@ device drivers.
 void draw (int);
 
 volatile sig_atomic_t stop;
-void catchSIGINT(int signum){
+void catchSIGINT(int signum) {
     stop = 1;
 }
 
-int main(int argc, char *argv[]){
-
-	int i, video_FD;	// file descriptor
-	|$\ldots$| other declarations not shown
+int main(int argc, char *argv[])
+{
+    int i, video_FD;    // file descriptor
+    |$\ldots$| other declarations not shown
     
-  	// catch SIGINT from ^C, instead of having it abruptly close this program
-  	signal(SIGINT, catchSIGINT);
+    // catch SIGINT from ^C, instead of having it abruptly close this program
+    signal(SIGINT, catchSIGINT);
     
-	|$\ldots$| code to open the video driver shown
+    |$\ldots$| code to open the video driver shown
 
-	// set random initial position and "delta" for all rectangle boxes
-	|$\ldots$| code not shown
+    // set random initial position and "delta" for all rectangle boxes
+    |$\ldots$| code not shown
 
-  	while (!stop)
-	{
-		draw (video_FD);
-		// sync with VGA display 
-		write (video_FD, "sync", 5);
-	}
-	close (video_FD);
-	return 0;
+    while (!stop) {
+        draw (video_FD);
+        // sync with VGA display 
+        write (video_FD, "sync", 5);
+    }
+    close (video_FD);
+    return 0;
 }
 
 /* Code that draws the animation objects, and updates their positions */
-void draw(int fd)
-{
-	|$\ldots$| code not shown
+void draw(int fd) {
+    |$\ldots$| code not shown
 }
 \end{lstlisting}
 \end{minipage}
@@ -848,7 +833,6 @@ of the screen, the number of video frames that have been drawn. Using the defaul
 the frame counter should increment at the rate of 60 times per second.
 \item Compile and test your animation.
 \end{enumerate}
-
 
 \vskip 0.8in
 \noindent

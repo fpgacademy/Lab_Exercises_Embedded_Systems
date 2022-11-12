@@ -15,4 +15,7 @@ The program takes an optional arguments
 A recording of the Intel theme song is included when you start the program, so you can play it 
 by pressing KEY1.
 
-The program automatically exits after 30 seconds. 
+The program automatically exits after some time period.
+
+The files wav.c and wav.h can be used with any program to create a WAV audio file.
+

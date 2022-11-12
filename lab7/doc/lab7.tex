@@ -15,26 +15,23 @@
 
 \noindent
 The purpose of this exercise is to experiment with the ADXL345 accelerometer chip that is
-included on a number of DE-series board. In this writeup we will assume that you are using 
-the DE1-SoC board, but the same instructions apply to other DE-series board, such as the DE10-Nano
-and DE10-Standard. You will write programs that interact with the ADXL345 device under 
-the Linux* operating system, running on the ARM* processor in the DE1-SoC Computer. Also, 
-you will add support in the Linux kernel for the ADXL345 chip by creating a character device
-driver.
+included on the DE1-SoC board. You will add support in the Linux kernel for the ADXL345 chip 
+by creating a character device driver.
 
 \noindent
 \section*{Part I}
 
 \noindent
 To learn about the operation of the ADXL345 accelerometer chip, read the tutorial called
-{\it Using the Accelerometer in DE-SoC Boards}. This tutorial is available on the 
-FPGAcademy.org website. An example program that demonstrates use of the accelerometer
-is included with the tutorial.  This program assumes that no operating system is
+{\it Using the Accelerometer in DE-SoC Boards}. This tutorial is provided as part of the 
+design files that accompany this exercise. We assume that you are using the DE1-SoC board,
+but the procedures for using the accelerometer are the same for other boards, such as the
+DE10-Standard and DE10-Nano.  An example program that demonstrates use of the accelerometer
+is included with the tutorial.  It assumes that no operating system is
 being used (i.e., a ``bare metal'' environment), and therefore uses simple dereferencing of 
 pointers to communicate with the device. But, since your code needs to run under Linux on the
-DE1-SoC Computer, you will have to map the required physical addresses into virtual addresses
-by using Linux kernel functions like {\it mmap} and the {\it /dev/mem} interface.
-These concepts are discussed in detail in the tutorial {\it Using Linux on the DE1-SoC}.
+DE1-SoC Computer, you will have to map the required physical addresses into virtual
+addresses.
 
 ~\\
 \noindent
@@ -42,11 +39,12 @@ Perform the following:
 
 \begin{enumerate}
 \item Read through the tutorial {\it Using the Accelerometer in DE-SoC Boards}. Create a new
-version of the C program that accompanies the tutorial, which uses virtual addresses and
-can run under Linux.
-\item In your program, configure the ADXL345 device to provide an output data rate of 12.5
-Hz, using a fixed 10-bit resolution and +/- 16 g range. These settings provide an appropriate
-level of sensitivity from the ADXL345 device, of about 31 mg per least-significant bit.
+version, which uses virtual addresses and can run under Linux, of the C program that accompanies 
+the tutorial.
+\item In your program, configure the ADXL345 device to provide an output data rate of 12.5~Hz,
+using a fixed 10-bit resolution and +/- 16 g ({\it gravity}) range. 
+These settings provide an appropriate
+level of sensitivity in the ADXL345 device, of about 31 mg per least-significant bit.
 \item Use a Linux Terminal to compile and run your program. Tilt the DE1-SoC board in various
 directions and observe the acceleration data that is printed by your program. Since the z axis
 of the accelerometer chip on the DE1-SoC board is aligned with earth's gravity, your program
@@ -62,8 +60,8 @@ is stationary. You should end up with a program that prints out acceleration dat
 In Part I you wrote a user-level program to directly read/write registers in the ADXL345
 device by using memory-mapped I/O. In this part, you will use a different approach, by
 adding support to the Linux kernel for accessing the device.
-You are to create a Linux character device driver, in the form of a kernel
-module, that provides a file-based I/O interface to accelerometer data. The driver must create
+You are to create a character device driver
+that provides an interface to the accelerometer. The driver must create
 the file {\it /dev/accel} in the Linux filesystem. A read of this file should return accelerometer
 data in the format \texttt{R XXXX YYYY ZZZZ SS}, where {\it R} is 1 if new accelerometer data
 is being provided, {\it XXXX}, {\it YYYY}, and {\it ZZZZ} are acceleration data in the 
@@ -82,8 +80,8 @@ that are needed for the driver. Global variables that are used to access the acc
 which will be described later, are declared in lines~\ref{line:dec1} and~\ref{line:dec2}.
 Line~\ref{line:vars} is a placeholder for the declarations of function prototypes and variables
 that are needed for the character device driver. Prototypes have to be declared for the functions
-that are executed when opening, reading, and closing the driver. Variables of type 
-\texttt{dev\_t}, \texttt{cdev}, and \texttt{class} have to be declared and initialized in
+that are executed when opening, reading, and closing the driver. A variable of type 
+\texttt{miscdevice} has to be declared and initialized in
 the function {\it start\_accel}, shown in Lines~\ref{line:start1} to~\ref{line:start2},
 which is executed when the accelerometer driver is inserted into the Linux kernel. Refer to
 Exercise 3 for a more detailed discussion about the functions and variables that are needed for
@@ -105,7 +103,7 @@ Line~\ref{line:ADXL345} is a placeholder for the various functions that are need
 and write to registers in the ADXL345 device. You should be able to reuse the code from 
 Part I for these functions. The remainder of the code in Figure~\ref{fig:accel}
 refers to the functions that are needed to open, close, and read from the character device driver.
-A detailed discussion of these functions can be found in Laboratory Exercise 3.
+A detailed discussion relating to these functions can be found in Laboratory Exercise 3.
 
 ~\\
 \noindent
@@ -172,9 +170,8 @@ and implement the commands listed above.
 |\label{line:vars}$\ldots$| code not shown
 
 /* Code to initialize the accelerometer driver */
-|\label{line:start1}|static int _|$\,$|_init start_accel(void)
-{
-	// initialize the dev_t, cdev, and class data structures
+|\label{line:start1}|static int _|$\,$|_init start_accel(void) {
+	// initialize the miscdevice and other data structures
 	|$\ldots$| code not shown
 
 	// generate virtual addresses
@@ -192,8 +189,7 @@ and implement the commands listed above.
 // Functions needed to read/write registers in the ADXL345 device
 |\label{line:ADXL345}||$\ldots$| code not shown
 
-static void _|$\,$|_exit stop_accel(void)
-{
+static void _|$\,$|_exit stop_accel(void) {
 	/* unmap the physical-to-virtual mappings */
 	iounmap (I2C0_ptr);
 	iounmap (SYSMGR_ptr);
@@ -205,8 +201,7 @@ static void _|$\,$|_exit stop_accel(void)
 // Code for device_open and device_release
 |$\ldots$| code not shown
 
-static ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_t *offset)
-{
+static ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_t *offset) {
 	|$\ldots$| code not shown
 }
 \end{lstlisting}
@@ -223,8 +218,8 @@ board right, left, up, or down should cause the bubble to ``move'' accordingly.
 Also, print in the top-left of the screen the values of x, y, and z acceleration each time
 new data is available from your device driver.
 \item To implement graphics, you can use either ASCII commands in a Terminal window, or you can
-connect a VGA monitor to the DE1-SoC board and use VGA graphics.  ASCII graphics were
-described in Lab Exercise 5, and VGA graphics were discussed in Lab Exercise 6.
+connect a VGA monitor to the DE1-SoC board and use VGA graphics.  ASCII and VGA graphics were
+described in Lab Exercises 5 and 6, respectively.
 \item Experiment by writing different commands to {\it /dev/accel} and examining the effect
 on your graphics display. Depending on the data format that you set in the accelerometer,
 the graphics displayed by your program may appear ``jittery''. To ameliorate this effect,
@@ -262,8 +257,7 @@ int main(int argc, char *argv[])
 	|$\ldots$| code not shown 
     
 	// Open the character device driver
-  	if ((accel_FD = open("/dev/accel", O_RDWR)) == -1)
-	{
+  	if ((accel_FD = open("/dev/accel", O_RDWR)) == -1) {
 		printf("Error opening /dev/accel: %s\n", strerror(errno));
 		return -1;
 	}

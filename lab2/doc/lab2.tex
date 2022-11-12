@@ -70,8 +70,8 @@ fflush (stdout);
 \end{lstlisting}
 
 \noindent
-Additional Terminal window commands can be found by searching on the Internet for
-\texttt{VT100 escape codes}.
+Additional information about Linux Terminal window commands can be found by searching on 
+the Internet for \texttt{VT100 escape codes}.
 \begin{table}[h]
 \caption{Terminal window ASCII commands.}
 ~\\
@@ -109,14 +109,15 @@ Terminal window.
 
 You should provide the ability to pause or run the scrolling operation by using the pushbutton 
 KEYs. The programming registers in a DE-series KEY port are illustrated in Figure~\ref{fig:KEY}.
-There is a {\it Data} register that reflects which KEY(s) are pressed at a given time. For 
+There is a {\it Data} register that reflects which KEY(s) is (are) pressed at a given time. For 
 example, if {\it KEY}$_0$ is currently being pressed, then bit 0 of the data register will be~1,
 otherwise~0. The {\it Edgecapture} register can be used to check if a {\it KEY} has been 
 pressed since last examined, even if it has since been released. If, for example, 
 {\it KEY}$_0$ is pressed then bit 0 of the {\it Edgecapture} register becomes~1 and 
 remains so even if {\it KEY}$_0$ is released. To reset the bit to 0, a program has to 
 explicitly write the value~1 into this bit-position of the {\it Edgecapture} register. 
-The {\it Interruptmask} register is not used for this exercise, and can be ignored.
+The {\it Interruptmask} register in Figure~\ref{fig:KEY}
+is not used for this exercise, and can be ignored.
 
 \begin{figure}[H]
    \begin{center}
@@ -126,10 +127,11 @@ The {\it Interruptmask} register is not used for this exercise, and can be ignor
 	\label{fig:KEY}
 \end{figure}
 
-To communicate with the KEYs, and seven-segment displays if applicable, use memory-mapped 
+To communicate with the KEYs and seven-segment displays, if applicable, use memory-mapped 
 I/O as explained in the tutorial {\it Using Linux on DE-series Boards}. The source code from 
 this tutorial for translating physical addresses into virtual addresses is included along with 
-this laboratory exercise. You can use this source code as part of your solution.
+the design files for this laboratory exercise. You can use this source code as part of 
+your solution.
 
 \item
 Compile your code using a command such as \texttt{gcc -Wall -o part1 part1.c}.
@@ -148,7 +150,7 @@ kernel module.
 ~\\
 \noindent
 Your kernel module should implement a real-time clock. Display the time on seven-segment
-displays, if available, or in the Terminal window. The time
+displays, if available, and/or in the Terminal window. The time
 should be displayed in the format \red{MM}:\red{SS}:\red{DD}, where \red{{\it MM}} are minutes, 
 \red{{\it SS}} are seconds, and \red{{\it DD}} are hundredths of a second. 
 To keep track of time you
@@ -157,7 +159,7 @@ number of hardware timers.  For this exercise use an interval timer implemented
 in the FPGA called {\it FPGA Timer0}.
 The register interface for this timer has the base address {\sf 0xFF202000}. As shown in 
 Figure~\ref{fig:timer} this timer has six 16-bit registers. To use the timer you need
-to write a suitable value into the {\it Counter start value} registers (there are two, one for the
+to write a suitable value into the {\it Counter start value} registers (one for the
 upper 16~bits, and one for the lower 16 bits of the 32-bit counter value). To start the
 counter, you need to set the {\it START} bit in the {\it Control} register to~1. Once
 started the timer will count down to~0 from the initial value in the {\it Counter start
@@ -165,7 +167,7 @@ value} register.  The counter will automatically reload this value and continue 
 if the {\it CONT} bit in the {\it Control} register is~1. When the counter reaches~0,
 it will set the {\it TO} bit in the {\it Status} register to~1. This bit can be cleared 
 under program control by writing a~0 into it. If the {\it ITO} bit in the control register is 
-set to~1, then the timer will generate an ARM* processor interrupt each time 
+set to~1, then the timer will generate an interrupt for the ARM processor each time 
 it sets the {\it TO} bit.
 The timer clock frequency is 100~MHz. The interrupt~ID of the timer is~72.
 Follow the instructions in the tutorial {\it Using Linux on DE-series Boards} to register this
@@ -196,8 +198,8 @@ time. When the time reaches \red{59}:\red{59}:\red{99}, it should wrap around to
 
 If using seven-segment displays, you can continuously display the updated time. But if
 using the Terminal window, it is better to print the time only when the user requests it.
-For example, your timer interrupt service routine could read from the KEY port and print the 
-time whenever {\it KEY}$_1$ has been pressed.
+Your timer interrupt service routine should read from the {\it data} register in the KEY port 
+and print the time whenever {\it KEY}$_1$ is pressed.
 
 You can remove your module from the Linux kernel by using the command 
 \texttt{rmmod timer}. When removed, your {\it exit} routine should clear the seven-segment
@@ -259,7 +261,7 @@ digit of \red{SS}, and so on. After each press of {\it KEY}$_1$ print the curren
 
 ~\\
 \noindent
-The data register in the SW switch port for the DE1-SoC and DE10-Standard boards is shown in 
+The data registers in the SW switch port for the DE1-SoC and DE10-Standard boards are shown in 
 Figure~\ref{fig:slider}. The SW switch port for the DE10-Nano board, not shown in the figure, 
 has only four switches {\it SW}$_0$ to {\it SW}$_3$. 
 
@@ -295,9 +297,7 @@ using the Terminal window, then you should see the stopwatch time whenever the u
 You can remove your module from the Linux kernel by using the command 
 \texttt{rmmod stopwatch}. When removed, your {\it exit} routine should clear the seven-segment
 displays, if applicable.
-\vskip 0.8in
-\noindent
-\newpage
+
 \input{\CommonDocsPath/copyright.tex}
 
 \end{document}

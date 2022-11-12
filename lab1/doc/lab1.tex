@@ -18,17 +18,19 @@ This is an introductory exercise in using a Linux* operating system on Intel's C
 devices. This discussion assumes that the reader is using the DE1-SoC development and 
 education board, but the lab instructions apply equally well if other boards are being used,
 such as the DE10-Standard or DE10-Nano. The DE-series boards are described on the 
-FPGAcademy.org website.  Linux runs on the ARM* processor that is part 
+{\it FPGAcademy.org} website.  Linux runs on the ARM* processor that is part 
 of the Cyclone V SoC device. During the operating system boot process, Linux programs the 
 Cyclone V FPGA with the \textit{DE1-SoC Computer} system (or similar system for other
 boards). This system instantiates components inside the FPGA to make it easy to use the 
 peripherals built into the DE1-SoC board, such as the LEDs, seven-segment displays, switches, 
 and pushbuttons. For a detailed description of the computer system, please refer to 
-a document such as \textit{DE1-SoC Computer System with ARM}, available from FPGAcademy.org.
+a document such as \textit{DE1-SoC Computer System with ARM}, available as part of the
+{\it Computer Organization} materials on {\it FPGAcademy.org}.
 
 \section*{Part I}
 \noindent
 Read and complete Sections 1, 2, and 3 of the tutorial \textit{Using Linux on DE-series Boards}.
+This tutorial is available as part of the {\it Embedded Systems} material on {\it FPGAcademy.org}.
 These sections will guide you through setting up the Linux microSD card, running the 
 Linux OS on the DE-series board, and communicating with the board from a host computer. 
 
@@ -47,7 +49,8 @@ LEDR light is ever on at one time. The effect should be a single light sweeping 
 right-to-left, then left-to-right, and so on.  
 Use a delay so that the light moves at some reasonable speed. To implement the delay, you
 can use a Linux system function, such as \texttt{nanosleep($\ldots$)}. Documentation for 
-the \texttt{nanosleep} function can be found by searching for it on the Internet.
+the \texttt{nanosleep} function can be found by typing \texttt{man nanosleep} in a 
+Linux terminal, or by searching for it on the Internet.
 
 \section*{Part III}
 \noindent
@@ -62,7 +65,7 @@ leftmost light is on, and then increments this value whenever a KEY is pressed. 
 augment this code to display the count of pushbutton presses as a decimal digit, either on 
 the seven-segment display {\it HEX0} or on the Linux Terminal window. You only need to 
 display the decimal value corresponding to the four 
-least-significant bits of the count, and wrap around to 0 when it reaches 9. Always
+least-significant bits of the count, and wrap around to 0 when it exceeds 9. Always
 leave the leftmost LEDR light set to 1 as a visual indicator that the device driver 
 is present in the kernel. The count values displayed on the LEDR port should cycle through 
 $\red{1}000000000, \red{1}00000000\red{1}, \red{1}00000000\red{1}0,
@@ -95,7 +98,8 @@ printk (KERN_ERR "\e[2J");			// clear Terminal window
 \end{lstlisting}
 
 ~\\
-\noindent More Terminal window commands can be found by searching on the Internet for
+\noindent Documentation for the {\it printk} library function can be found by searching on
+the Interet. Also, more Terminal window commands can be found by searching on the Internet for
 \texttt{VT100 escape codes}.
 
 ~\\

@@ -41,10 +41,10 @@ value and continue counting if the {\it CONT} bit in the {\it Control} register 
 counter reaches~0, it will set the {\it TO} bit in the {\it Status} register to~1.
 This bit can be cleared under program control by writing a~0 into it. If the 
 {\it ITO} bit in the control register is set to~1, then the timer will generate an ARM* 
-interrupt each time it sets the {\it TO} bit. The timer clock frequency is 100 MHz. 
-The interrupt ID of the timer is 72. Follow the instructions in the tutorial {\it Using Linux 
-on DE-series Boards} to register this interrupt ID with the Linux* kernel and ensure that it invokes 
-your kernel module whenever the interrupt occurs.
+interrupt each time it sets the {\it TO} bit. The timer clock frequency is 100~MHz. 
+The interrupt ID of the timer is 72. Following the instructions in the tutorial {\it Using Linux 
+on DE-series Boards}, register this interrupt ID with the Linux* kernel and ensure that it invokes 
+your timer device driver whenever the interrupt occurs.
 
 ~\\
 \begin{figure}[htb]
@@ -55,18 +55,21 @@ your kernel module whenever the interrupt occurs.
 \label{fig:timer}
 \end{figure}
 
+\newpage
 \noindent
 Perform the following:
 
 \begin{enumerate}
-\item Create a file called {\it stopwatch.c} and type your C code into this file.
+\item Create a file called {\it stopwatch.c} and type your C code into this file. For
+this part of the exercise, your device driver needs to support \texttt{open},
+\texttt{release}, and \texttt{read} operations, but not \texttt{write} operations.
 
 \item
 Create a Makefile, compile your kernel module, and insert it into the kernel. 
 
 \item
 Test your character device driver by using the command \texttt{cat /dev/stopwatch}, which
-should print the current stopwatch time.
+should display the current stopwatch time on the Linux Terminal window.
 \end{enumerate}
 
 \section*{Part II}
@@ -81,12 +84,13 @@ minute, 1 second, and 99 hundredths.
 
 ~\\
 \noindent
-If you are using the DE1-SoC or DE10-Standard boards, which provide seven-segment displays,
-then implement the two additional commands \texttt{disp}, and \texttt{nodisp}. Ignore these
-commands if you are using the DE10-Nano board.
+If you are using a DE-series board that has seven segment displays, such as the DE1-SoC
+board, then you should also implement two other commands: \texttt{disp}, and \texttt{nodisp}. 
 The \texttt{disp} command causes the stopwatch to show the time every $1/100$
 seconds on the seven-segment displays HEX5-HEX0. The \texttt{nodisp} command turns off the
-seven-segment display feature, and clears HEX5-HEX0. 
+seven-segment display feature, and clears HEX5-HEX0. If you are using a board that does
+not have seven-segment displays, such as the DE10-Nano, then you will not be able to
+implement the \texttt{disp} and \texttt{nodisp} commands.
 
 ~\\
 \noindent
@@ -164,15 +168,17 @@ should use character devices drivers to communicate with the \texttt{SW} switche
 \texttt{KEY} pushbuttons, \texttt{LED} lights, and \texttt{stopwatch}. The game
 involves a series of mathematical problems, such as summations, presented to a user, with
 a certain amount of time given to receive a correct answer. The game should perform as follows. 
-In the first phase a default \texttt{stopwatch} time is shown on the seven-segment displays, 
-and the user can change the displayed time by using the SW switches and KEYs. Use the
-same scheme as for Part III to set the stopwatch.  Pressing KEY$_0$ starts the game. At this 
+In the first phase a default \texttt{stopwatch} time is used. If your board supports the
+\texttt{disp} command, then you should show the \texttt{stopwatch} time on the 
+seven-segment displays. The user can change the displayed time by using the SW switches and 
+KEYs. Use the same scheme as for Part III to set the stopwatch. 
+Pressing KEY$_0$ starts the game. At this 
 point the program should present a series of math questions that the user needs to answer 
 within the \texttt{stopwatch} time. Answers should be entered through the command line. 
 Incorrect answers to a question should be rejected, but the user should be allowed to 
 try again as long as the time has not expired. 
 After receiving a correct answer, the \texttt{stopwatch} should be reset and a new question asked. 
-To make the game more interesting, you could increase the difficult 
+To make the game more interesting, you could increase the difficultly 
 of questions over time. At the end, when the user fails to respond within the \texttt{stopwatch}
 time, some statistics about the results should be shown to the user (for example, you
 could report the number of questions correctly answered, and the average time taken per question).

@@ -1,5 +1,5 @@
 Part3 is an executable file and example solution to Part III. It requires the drivers 
-/dev/IntelFPGAUP/SW, dev/IntelFPGAUP/KEY, /dev/IntelFPGAUP/LEDR, and stopwatch.ko.
+/dev/IntelFPGAUP/SW, dev/IntelFPGAUP/KEY, /dev/IntelFPGAUP/LED, and stopwatch.ko.
 The /dev/IntelFPGAUP drivers can be found in /home/root/Linux_Libraries/drivers.
 
 When executing the part3 program the stopwatch can be paused/run by pressing KEY0. Pressing 
@@ -11,7 +11,7 @@ from rightmost to leftmost. Pressing KEY0 concludes the setting procedure and ru
 The part3 program automatically exits after 30 seconds.
 
 Part4 is an executable file and example solution to Part IV. It requires the drivers 
-/dev/IntelFPGAUP/SW, dev/IntelFPGAUP/KEY, /dev/IntelFPGAUP/LEDR, and stopwatch.ko.
+/dev/IntelFPGAUP/SW, dev/IntelFPGAUP/KEY, /dev/IntelFPGAUP/LED, and stopwatch.ko.
 The /dev/IntelFPGAUP drivers can be found in /home/root/Linux_Libraries/drivers.
 
 The code implements a game that works as follows: in the first step a default stopwatch time 
