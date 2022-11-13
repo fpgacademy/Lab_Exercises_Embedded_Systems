@@ -337,7 +337,9 @@ Perform the following:
 \item Create a file named {\it video.c} and fill in the missing code from Figure~\ref{fig:video}.
 Create a Makefile for your character device driver. Compile the code to create the 
 kernel module {\it video.ko}, and insert this module into the Linux kernel. 
-\item Connect a VGA monitor to the DE-series board.
+\item Connect a VGA monitor to the DE-series board. If you do not have access to a
+monitor, then you can use the {\it VGA Emulator} that is provided in the design files for this 
+exercise.  Instructions for using the VGA Emulator are given in Appendix A.
 \item Test your video character device driver by using a Terminal window. Reading from the file
 {\it /dev/video} should return the string ``320 240'', which provides the VGA screen size.
 Use \texttt{pixel} commands to color some pixels on the screen, and send the 
@@ -833,6 +835,30 @@ of the screen, the number of video frames that have been drawn. Using the defaul
 the frame counter should increment at the rate of 60 times per second.
 \item Compile and test your animation.
 \end{enumerate}
+
+\newpage
+\section*{Appendix A~~~~ Using the VGA Emulator}
+
+The design files for this exercise include a folder named \texttt{VGA\_emulator}. Copy
+this folder in its entirety onto the SD Card of your DE1-SoC board. The VGA emulator is a
+program that monitors the contents of the VGA pixel and character buffers, and displays a
+corresponding image in a window within the VNC Viewer. To use this program, open the VNC
+Viewer, and then open a Terminal window within the VNC Viewer. As shown in
+Figure~\ref{fig:emulator}, in
+the \texttt{VGA\_emulator} directory execute the {\it vga} program. Any video output that
+is present in the pixel or character buffers will be shown in the emulator window. In this
+example, we have executed a command in a Terminal window (via {\it putty}) to insert a 
+{\it video.ko} driver. Then, we sent commands to this driver to draw some lines and text in 
+the VGA output. If a VGA monitor were connected to the DE1-SoC board, then the same image 
+shown in the emulator window would be displayed there. 
+
+\begin{figure}[h]
+   \begin{center}
+       \includegraphics{figures/fig_emulator.png}
+   \end{center}
+   \caption{VGA Emulator.}
+	\label{fig:emulator}
+\end{figure}
 
 \vskip 0.8in
 \noindent
