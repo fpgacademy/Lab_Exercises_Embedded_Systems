@@ -4,3 +4,5 @@ release/
 # iv Files
 *.swp
 
+*.DS_Store
+
