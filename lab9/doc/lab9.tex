@@ -222,7 +222,7 @@ to start another sweep as soon as the next trigger is detected.
 \noindent
 During a sweep your oscilloscope should capture one sample for each $x$ coordinate of the 
 VGA display. The samples should be captured in regular intervals. For example, if
-$x=320$, then a sample should be captured every $100~ ms / 320 = 0.3125~ms$. To capture data 
+$x=320$, then a sample should be captured every 100 ms / 320 = 0.3125~ms. To capture data 
 at regular intervals, you will need to use an interval timer like you did in Part II. However,
 instead of directly controlling a hardware timer using its register interface, you will use 
 a Linux application programmer interface (API) for creating and using timers. This API allows 
@@ -242,14 +242,13 @@ functions.
 \item Lines~\ref{line:t1}-\ref{line:t2}: The timer specification structure which is used to set the timer to count 0.3125 ms intervals. The \texttt{it\_interval} variable specifies when the initial timeout occurs after setting the timer (set to 312500 ns, which equals 0.3125 ms). The \texttt{it\_value} variable specifies the repeating timeout interval after the initial timeout.
 \item Lines~\ref{line:ts1}-\ref{line:ts2}: The timer specification structure for stopping a timer. Notice that the variables are set to 0, which turns off the timer.
 \item Lines~\ref{line:f1}-\ref{line:f2}: The function that handles a timer timeout. This function is called every 0.3125 ms. 
-\item Lines~\ref{line:sig1}-\ref{line:sig2}: Code that uses the Linux signalling API 
-(provided by \texttt{<signal.h>}) to register the function \texttt{timeout\_handler($\ldots$)} as 
-the handler for the \texttt{SIGALM} signal. The timer that we will use generates the 
-\texttt{SIGALM} signal upon each timeout, thus invoking the
-\texttt{timeout\_handler($\ldots$)} function.
+\item Line~\ref{line:sig2}: Registering the function \texttt{timeout\_handler($\ldots$)} as 
+the handler for the \texttt{SIGALRM} signal. Our timer generates the 
+\texttt{SIGALRM} signal upon each timeout, thus invoking the
+\texttt{timeout\_handler($\ldots$)} function at the desired frequency.
 \item Line~\ref{line:mono}: Creates a monotonically increasing timer. At this point, the timer is inactive.
 \item Line~\ref{line:timer}: Arms the timer, making it timeout every 0.3125 ms. Upon each 
-timeout, the timer will send the \texttt{SIGALM} signal to this program, which will invoke 
+timeout, the timer will send the \texttt{SIGALRM} signal to this program, which will invoke 
 the \texttt{timeout\_handler($\ldots$)} function.
 \item Line~\ref{line:stop}: Stops the timer by configuring it with a zero for both 
 \texttt{it\_interval} and \texttt{it\_value}.
@@ -305,15 +304,8 @@ void timeout_handler(int signo) {
 int main(void)
 {
 	|$\ldots$| 
-	|\label{line:sig1}|// Set up the signal handling
-	struct sigaction act;
-	sigset_t set;
-	sigemptyset (&set);
-	sigaddset (&set, SIGALRM);
-	act.sa_flags = 0;
-	act.sa_mask = set;
-	act.sa_handler = &timeout_handler;
-	|\label{line:sig2}|sigaction (SIGALRM, &act, NULL);
+	|\label{line:sig1}|// catch SIGALRM and call the handler
+	|\label{line:sig2}|signal(SIGALRM, timeout_handler);
 
 	// Create a monotonically increasing timer
 	|\label{line:mono}|timer_create (CLOCK_MONOTONIC, NULL, &interval_timer_id);
